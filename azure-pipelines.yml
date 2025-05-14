@@ -9,14 +9,14 @@ jobs:
   steps:
   - task: NodeTool@0
     inputs:
-      versionSpec: '20.x'
-      displayName: 'Install Node.js 20'
+      versionSpec: '22.x'
+      displayName: 'Install Node.js 22'
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
       version: '5.x'
       installationPath: $(Agent.ToolsDirectory)/dotnet
- - task: PublishCodeCovCoverage@1
+  - task: PublishCodeCovCoverage@1
     displayName: 'Upload code coverage to Codecov.io'
     inputs:
       buildFolderName: '$(Build.BinariesDirectory)'
