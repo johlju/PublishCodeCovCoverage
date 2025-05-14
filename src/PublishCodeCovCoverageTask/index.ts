@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as https from 'https';
 import { execSync } from 'child_process';
 
-async function run(): Promise<void> {
+export async function run(): Promise<void> {
     try {
         // Set resource path for localization
         const taskJsonPath = path.join(__dirname, 'task.json');
@@ -14,7 +14,7 @@ async function run(): Promise<void> {
           // Get input parameters
         const buildFolderName = tl.getInput('buildFolderName', true) || '';
         const testResultFolderName = tl.getInput('testResultFolderName', true) || '';
-        
+
         // Get environment variables
         const codecovToken = tl.getVariable('CODECOV_TOKEN') || process.env.CODECOV_TOKEN;
         const codecovUrl = tl.getVariable('CODECOV_URL') || process.env.CODECOV_URL || 'https://codecov.io';
@@ -37,11 +37,11 @@ async function run(): Promise<void> {
         // Create a directory to store files
         const tempDir = tl.getVariable('Agent.TempDirectory') || '.';
         const workingDir = path.join(tempDir, 'codecov_uploader');
-        
+
         if (!fs.existsSync(workingDir)) {
             fs.mkdirSync(workingDir, { recursive: true });
         }
-        
+
         // Change to working directory
         process.chdir(workingDir);
         console.log(`Working directory: ${workingDir}`);
@@ -64,30 +64,40 @@ async function run(): Promise<void> {
 
         // Check if coverage file exists
         const coverageFilePath = path.join(buildFolderName, testResultFolderName, 'JaCoCo_coverage.xml');
-        
-        if (!fs.existsSync(coverageFilePath)) {
-            console.log(`Warning: Coverage file not found at ${coverageFilePath}`);
-            console.log('Looking for coverage files in the build directory...');
-            
+        let actualCoverageFilePath = coverageFilePath;
+
+        if (!fs.existsSync(actualCoverageFilePath)) {
+            console.log(`Warning: Coverage file not found at ${actualCoverageFilePath}`);
+            console.log('Looking for coverage files in the test result directory...');
+
             // Try to find any XML coverage files
             try {
-                const result = execSync(`find ${buildFolderName} -name "*.xml" | grep -i coverage`, { encoding: 'utf8' });
+                const result = execSync(`find ${testResultFolderName} -name "*.xml" | grep -i coverage`, { encoding: 'utf8' });
                 if (result.trim()) {
+                    // Get the first found file
+                    const foundFiles = result.trim().split('\n');
+                    actualCoverageFilePath = foundFiles[0].trim();
                     console.log(`Found potential coverage files: ${result}`);
+                    console.log(`Using the first found coverage file: ${actualCoverageFilePath}`);
                 }
             } catch (error) {
                 console.log('No coverage files found');
             }
         }
 
-        console.log(`Uploading coverage file: ${coverageFilePath}`);
-        execSync(`./codecov upload-process -f "${coverageFilePath}" -t "${codecovToken}" -u "${codecovUrl}"`, { 
-            stdio: 'inherit' 
+        if (!fs.existsSync(actualCoverageFilePath)) {
+            throw new Error(`No coverage file found to upload`);
+        }
+
+        console.log(`Uploading coverage file: ${actualCoverageFilePath}`);
+
+        execSync(`./codecov upload-process -f "${actualCoverageFilePath}" -t "${codecovToken}" -u "${codecovUrl}"`, {
+            stdio: 'inherit'
         });
-        
+
         console.log('Upload completed successfully');
         tl.setResult(tl.TaskResult.Succeeded, 'Code coverage uploaded successfully');
-        
+
     } catch (err: any) {
         console.error(`Error: ${err.message}`);
         if (err.stdout) console.log(`stdout: ${err.stdout}`);
@@ -96,37 +106,45 @@ async function run(): Promise<void> {
     }
 }
 
-async function downloadFile(url: string, dest: string): Promise<void> {
+export async function downloadFile(url: string, dest: string): Promise<void> {
     return new Promise((resolve, reject) => {
         console.log(`Downloading ${url} to ${dest}`);
         const file = fs.createWriteStream(dest);
-        
         https.get(url, (response) => {
             if (response.statusCode !== 200) {
                 return reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
             }
-            
+
             response.pipe(file);
-            
+
             file.on('finish', () => {
                 file.close(() => {
                     console.log(`Downloaded ${url} successfully`);
                     resolve();
                 });
             });
-            
+
             file.on('error', (err) => {
                 fs.unlink(dest, () => reject(err));
             });
-            
+
         }).on('error', (err) => {
             fs.unlink(dest, () => reject(err));
         });
     });
 }
 
-// Execute the task
-run().catch(err => {
+// Define the error handler for unhandled rejections
+function handleUnhandledError(err: Error): void {
     console.error('Unhandled error:', err);
     tl.setResult(tl.TaskResult.Failed, `Unhandled error: ${err.message}`);
-});
+}
+
+// Execute the task
+run().catch(handleUnhandledError);
+
+// Expose the handler for testing purposes
+// This conditional prevents it from affecting the actual behavior
+if (process.env.NODE_ENV === 'test') {
+    module.exports.__runCatchHandlerForTest = handleUnhandledError;
+}
