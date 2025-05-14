@@ -64,24 +64,34 @@ export async function run(): Promise<void> {
 
         // Check if coverage file exists
         const coverageFilePath = path.join(buildFolderName, testResultFolderName, 'JaCoCo_coverage.xml');
+        let actualCoverageFilePath = coverageFilePath;
 
-        if (!fs.existsSync(coverageFilePath)) {
-            console.log(`Warning: Coverage file not found at ${coverageFilePath}`);
-            console.log('Looking for coverage files in the build directory...');
+        if (!fs.existsSync(actualCoverageFilePath)) {
+            console.log(`Warning: Coverage file not found at ${actualCoverageFilePath}`);
+            console.log('Looking for coverage files in the test result directory...');
 
             // Try to find any XML coverage files
             try {
-                const result = execSync(`find ${buildFolderName} -name "*.xml" | grep -i coverage`, { encoding: 'utf8' });
+                const result = execSync(`find ${testResultFolderName} -name "*.xml" | grep -i coverage`, { encoding: 'utf8' });
                 if (result.trim()) {
+                    // Get the first found file
+                    const foundFiles = result.trim().split('\n');
+                    actualCoverageFilePath = foundFiles[0].trim();
                     console.log(`Found potential coverage files: ${result}`);
+                    console.log(`Using the first found coverage file: ${actualCoverageFilePath}`);
                 }
             } catch (error) {
                 console.log('No coverage files found');
             }
         }
 
-        console.log(`Uploading coverage file: ${coverageFilePath}`);
-        execSync(`./codecov upload-process -f "${coverageFilePath}" -t "${codecovToken}" -u "${codecovUrl}"`, {
+        if (!fs.existsSync(actualCoverageFilePath)) {
+            throw new Error(`No coverage file found to upload`);
+        }
+
+        console.log(`Uploading coverage file: ${actualCoverageFilePath}`);
+
+        execSync(`./codecov upload-process -f "${actualCoverageFilePath}" -t "${codecovToken}" -u "${codecovUrl}"`, {
             stdio: 'inherit'
         });
 

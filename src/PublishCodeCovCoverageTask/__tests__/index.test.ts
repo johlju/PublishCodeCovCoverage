@@ -257,7 +257,7 @@ describe('PublishCodeCovCoverage', () => {
 
     // Verify execSync was called to search for files
     expect(execSync).toHaveBeenCalledWith(
-      expect.stringContaining('find build -name "*.xml" | grep -i coverage'),
+      expect.stringContaining('find testResults -name "*.xml" | grep -i coverage'),
       expect.anything()
     );
   });
@@ -282,8 +282,8 @@ describe('PublishCodeCovCoverage', () => {
 
     // The command throwing should be caught and handled, and the run should complete
     expect(tl.setResult).toHaveBeenCalledWith(
-      tl.TaskResult.Succeeded,
-      'Code coverage uploaded successfully'
+      tl.TaskResult.Failed,
+      'No coverage file found to upload'
     );
   });
 
