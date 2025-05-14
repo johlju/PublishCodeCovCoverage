@@ -1,0 +1,498 @@
+// filepath: /Users/johlju/source/PublishCodeCovCoverage/src/PublishCodeCovCoverageTask/__tests__/index.test.ts
+import * as tl from 'azure-pipelines-task-lib/task';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as https from 'https';
+import { execSync } from 'child_process';
+
+// Mocks
+jest.mock('azure-pipelines-task-lib/task');
+jest.mock('fs');
+jest.mock('path');
+jest.mock('https');
+jest.mock('child_process');
+
+// Create a module proxy for the index module
+const indexPath = '../index';
+let mockTask: jest.Mocked<typeof tl>;
+
+describe('PublishCodeCovCoverageTask', () => {
+  // Setup mocks before each test
+  beforeEach(() => {
+    jest.resetModules();
+    jest.resetAllMocks();
+    
+    // Mock console methods
+    jest.spyOn(console, 'log').mockImplementation(jest.fn());
+    jest.spyOn(console, 'error').mockImplementation(jest.fn());
+    
+    // Setup task lib mocks
+    mockTask = tl as jest.Mocked<typeof tl>;
+    mockTask.getInput.mockImplementation((name: string) => {
+      switch (name) {
+        case 'buildFolderName': return 'build';
+        case 'testResultFolderName': return 'testResults';
+        default: return '';
+      }
+    });
+    
+    mockTask.getVariable.mockImplementation((name: string) => {
+      switch (name) {
+        case 'CODECOV_TOKEN': return 'mock-token';
+        case 'Agent.TempDirectory': return '/tmp';
+        default: return undefined;
+      }
+    });
+    
+    // Setup fs mocks
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
+    (fs.chmodSync as jest.Mock).mockReturnValue(undefined);
+    
+    // Setup stream mocks
+    const mockWriteStream = {
+      on: jest.fn().mockImplementation(function(this: any, event: string, handler: Function) {
+        if (event === 'finish') {
+          setTimeout(() => handler(), 0);
+        }
+        return this;
+      }),
+      close: jest.fn().mockImplementation((callback: Function) => callback())
+    };
+    (fs.createWriteStream as jest.Mock).mockReturnValue(mockWriteStream);
+    
+    // Setup unlink mock
+    (fs as any).unlink = jest.fn().mockImplementation((_: string, callback: Function) => callback());
+    
+    // Setup path mock
+    (path.join as jest.Mock).mockImplementation((...args: string[]) => args.join('/'));
+    
+    // Setup execSync mock
+    (execSync as jest.Mock).mockReturnValue('');
+    
+    // Setup https mock
+    const mockResponse = {
+      statusCode: 200,
+      pipe: jest.fn(),
+      on: jest.fn()
+    };
+    
+    (https.get as jest.Mock).mockImplementation((_: string, callback: Function) => {
+      callback(mockResponse);
+      return { on: jest.fn() };
+    });
+    
+    // Save & mock process
+    jest.spyOn(process, 'chdir').mockImplementation(jest.fn());
+    const originalEnv = process.env;
+    process.env = { ...originalEnv };
+  });
+  
+  afterEach(() => {
+    // Clean up
+  });
+  
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+  
+  it('should execute without errors when all requirements are met', async () => {
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify expected calls
+    expect(mockTask.setResourcePath).toHaveBeenCalled();
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/tmp/codecov_uploader', { recursive: true });
+    expect(fs.chmodSync).toHaveBeenCalledWith('codecov', '755');
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringContaining('./codecov upload-process'),
+      expect.any(Object)
+    );
+    expect(mockTask.setResult).toHaveBeenCalledWith(tl.TaskResult.Succeeded, expect.any(String));
+  });
+  
+  it('should throw error if CODECOV_TOKEN is not set', async () => {
+    // Mock token as undefined
+    mockTask.getVariable.mockImplementation((name: string) => {
+      switch (name) {
+        case 'CODECOV_TOKEN': return undefined;
+        case 'Agent.TempDirectory': return '/tmp';
+        default: return undefined;
+      }
+    });
+    
+    process.env.CODECOV_TOKEN = undefined;
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify error handling
+    expect(mockTask.setResult).toHaveBeenCalledWith(
+      tl.TaskResult.Failed, 
+      'CODECOV_TOKEN environment variable is not set'
+    );
+  });
+  
+  it('should create working directory if it does not exist', async () => {
+    // Mock directory not existing
+    (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
+      if (path === '/tmp/codecov_uploader') return false;
+      return true;
+    });
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify directory creation
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/tmp/codecov_uploader', { recursive: true });
+  });
+  
+  it('should search for alternative coverage files if primary file is not found', async () => {
+    // Mock coverage file not existing
+    (fs.existsSync as jest.Mock).mockImplementation((filepath: string) => {
+      if (filepath.includes('JaCoCo_coverage.xml')) return false;
+      return true;
+    });
+    
+    // Mock successful find command
+    (execSync as jest.Mock).mockImplementation((command: string) => {
+      if (command.includes('find')) return 'build/coverage.xml\nbuild/reports/coverage.xml';
+      return '';
+    });
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify find command execution
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringContaining('find build'),
+      expect.any(Object)
+    );
+  });
+  
+  it('should handle error when searching for alternative coverage files', async () => {
+    // Mock coverage file not existing
+    (fs.existsSync as jest.Mock).mockImplementation((filepath: string) => {
+      if (filepath.includes('JaCoCo_coverage.xml')) return false;
+      return true;
+    });
+    
+    // Mock find command error
+    (execSync as jest.Mock).mockImplementation((command: string) => {
+      if (command.includes('find')) throw new Error('No files found');
+      return '';
+    });
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Task should still complete
+    expect(mockTask.setResult).toHaveBeenCalledWith(
+      tl.TaskResult.Succeeded, 
+      'Code coverage uploaded successfully'
+    );
+  });
+  
+  it('should use environment variables as fallbacks', async () => {
+    // Mock task variables as undefined
+    mockTask.getVariable.mockReturnValue(undefined);
+    
+    // Set environment variables
+    process.env.CODECOV_TOKEN = 'env-token';
+    process.env.CODECOV_URL = 'https://custom-codecov.example.com';
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify environment variables are used
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringContaining('env-token'),
+      expect.any(Object)
+    );
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringContaining('https://custom-codecov.example.com'),
+      expect.any(Object)
+    );
+  });
+  
+  it('should use default codecov URL if not specified', async () => {
+    // Mock CODECOV_URL as undefined
+    mockTask.getVariable.mockImplementation((name: string) => {
+      switch (name) {
+        case 'CODECOV_TOKEN': return 'mock-token';
+        case 'CODECOV_URL': return undefined;
+        case 'Agent.TempDirectory': return '/tmp';
+        default: return undefined;
+      }
+    });
+    
+    // Ensure environment variable is also undefined
+    process.env.CODECOV_URL = undefined;
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify default URL is used
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringContaining('https://codecov.io'),
+      expect.any(Object)
+    );
+  });
+  
+  it('should handle command execution errors', async () => {
+    // Mock execution error
+    const error = new Error('Command execution failed') as any;
+    error.stdout = 'Some output';
+    error.stderr = 'Some error output';
+    
+    (execSync as jest.Mock).mockImplementation(() => {
+      throw error;
+    });
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify error handling
+    expect(mockTask.setResult).toHaveBeenCalledWith(
+      tl.TaskResult.Failed,
+      'Command execution failed'
+    );
+  });
+  
+  it('should handle HTTP download errors with non-200 status codes', async () => {
+    // Mock HTTP error status
+    (https.get as jest.Mock).mockImplementation((_: string, callback: Function) => {
+      const mockErrorResponse = {
+        statusCode: 404,
+        pipe: jest.fn(),
+        on: jest.fn()
+      };
+      callback(mockErrorResponse);
+      return { on: jest.fn() };
+    });
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify error handling
+    expect(mockTask.setResult).toHaveBeenCalledWith(
+      tl.TaskResult.Failed,
+      expect.stringContaining('Failed to get')
+    );
+  });
+  
+  it('should handle network errors during download', async () => {
+    // Mock network error
+    (https.get as jest.Mock).mockImplementation((_: string, __: Function) => {
+      return {
+        on: (event: string, handler: Function) => {
+          if (event === 'error') {
+            handler(new Error('Network error'));
+          }
+          return {};
+        }
+      };
+    });
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify error handling
+    expect(mockTask.setResult).toHaveBeenCalledWith(
+      tl.TaskResult.Failed,
+      expect.stringContaining('Network error')
+    );
+  });
+  
+  it('should handle file write errors during download', async () => {
+    // Mock file write error
+    (fs.createWriteStream as jest.Mock).mockReturnValue({
+      on: jest.fn().mockImplementation(function(this: any, event: string, handler: Function) {
+        if (event === 'error') {
+          setTimeout(() => handler(new Error('Write error')), 0);
+        }
+        return this;
+      }),
+      close: jest.fn()
+    });
+    
+    // Import the module to test
+    const { run } = require(indexPath);
+    
+    // Run the module
+    await run();
+    
+    // Verify error handling
+    expect(mockTask.setResult).toHaveBeenCalledWith(
+      tl.TaskResult.Failed,
+      expect.stringContaining('Write error')
+    );
+  });
+});
+
+// Test downloadFile function explicitly
+describe('downloadFile', () => {
+  beforeEach(() => {
+    jest.resetModules();
+    jest.resetAllMocks();
+    
+    // Mock console
+    jest.spyOn(console, 'log').mockImplementation(jest.fn());
+  });
+  
+  it('should download file successfully', async () => {
+    // Mock successful file download
+    const mockWriteStream = {
+      on: jest.fn().mockImplementation(function(this: any, event: string, handler: Function) {
+        if (event === 'finish') {
+          setTimeout(() => handler(), 0);
+        }
+        return this;
+      }),
+      close: jest.fn().mockImplementation((callback: Function) => callback())
+    };
+    
+    (fs.createWriteStream as jest.Mock).mockReturnValue(mockWriteStream);
+    
+    const mockResponse = {
+      statusCode: 200,
+      pipe: jest.fn(),
+      on: jest.fn()
+    };
+    
+    (https.get as jest.Mock).mockImplementation((_: string, callback: Function) => {
+      callback(mockResponse);
+      return { on: jest.fn() };
+    });
+    
+    // Import module to expose downloadFile function
+    const indexModule = require(indexPath);
+    
+    // Call downloadFile
+    await indexModule.downloadFile('https://example.com/file', 'dest-file');
+    
+    // Verify HTTP call and response handling
+    expect(https.get).toHaveBeenCalledWith('https://example.com/file', expect.any(Function));
+    expect(mockResponse.pipe).toHaveBeenCalled();
+    expect(mockWriteStream.close).toHaveBeenCalled();
+  });
+  
+  it('should handle HTTP error status codes', async () => {
+    // Mock HTTP error
+    const mockResponse = {
+      statusCode: 404,
+      pipe: jest.fn(),
+      on: jest.fn()
+    };
+    
+    (https.get as jest.Mock).mockImplementation((_: string, callback: Function) => {
+      callback(mockResponse);
+      return { on: jest.fn() };
+    });
+    
+    // Setup unlink mock
+    (fs as any).unlink = jest.fn().mockImplementation((_: string, callback: Function) => callback());
+    
+    // Import module to expose downloadFile function
+    const indexModule = require(indexPath);
+    
+    // Call downloadFile and expect error
+    await expect(indexModule.downloadFile('https://example.com/file', 'dest-file'))
+      .rejects
+      .toThrow('Failed to get');
+  });
+  
+  it('should handle network errors', async () => {
+    // Mock network error
+    (https.get as jest.Mock).mockImplementation((_: string, __: Function) => {
+      return {
+        on: (event: string, handler: Function) => {
+          if (event === 'error') {
+            handler(new Error('Network error'));
+          }
+          return {};
+        }
+      };
+    });
+    
+    // Setup unlink mock
+    (fs as any).unlink = jest.fn().mockImplementation((_: string, callback: Function) => callback());
+    
+    // Import module to expose downloadFile function
+    const indexModule = require(indexPath);
+    
+    // Call downloadFile and expect error
+    await expect(indexModule.downloadFile('https://example.com/file', 'dest-file'))
+      .rejects
+      .toThrow('Network error');
+  });
+  
+  it('should handle file write errors', async () => {
+    // Mock file write error
+    const mockWriteStream = {
+      on: jest.fn().mockImplementation(function(this: any, event: string, handler: Function) {
+        if (event === 'error') {
+          handler(new Error('Write error'));
+        }
+        return this;
+      }),
+      close: jest.fn()
+    };
+    
+    (fs.createWriteStream as jest.Mock).mockReturnValue(mockWriteStream);
+    
+    // Setup https mock
+    const mockResponse = {
+      statusCode: 200,
+      pipe: jest.fn(),
+      on: jest.fn()
+    };
+    
+    (https.get as jest.Mock).mockImplementation((_: string, callback: Function) => {
+      callback(mockResponse);
+      return { on: jest.fn() };
+    });
+    
+    // Setup unlink mock for cleanup
+    (fs as any).unlink = jest.fn().mockImplementation((_: string, callback: Function) => callback());
+    
+    // Import module to expose downloadFile function
+    const indexModule = require(indexPath);
+    
+    // Call downloadFile and expect error
+    await expect(indexModule.downloadFile('https://example.com/file', 'dest-file'))
+      .rejects
+      .toThrow('Write error');
+  });
+});
+

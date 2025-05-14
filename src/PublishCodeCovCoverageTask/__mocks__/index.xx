@@ -1,0 +1,17 @@
+import * as tl from 'azure-pipelines-task-lib/task';
+
+// Mock implementation of the run function for testing
+export async function run(): Promise<void> {
+    try {
+        // This is just a mock implementation for testing
+        console.log("Running mocked implementation");
+    } catch (err: any) {
+        console.error(`Error: ${err.message}`);
+        tl.setResult(tl.TaskResult.Failed, err.message);
+    }
+}
+
+// Mock implementation of downloadFile
+export async function downloadFile(url: string, dest: string): Promise<void> {
+    return Promise.resolve();
+}
