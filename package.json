@@ -13,7 +13,7 @@
   "author": "Viscalyx",
   "license": "MIT",
   "dependencies": {
-    "azure-pipelines-task-lib": "^4.8.0"
+    "azure-pipelines-task-lib": "^5.2.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.5",
