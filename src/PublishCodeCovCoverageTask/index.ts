@@ -124,8 +124,17 @@ export async function downloadFile(url: string, dest: string): Promise<void> {
     });
 }
 
-// Execute the task
-run().catch(err => {
+// Define the error handler for unhandled rejections
+function handleUnhandledError(err: Error): void {
     console.error('Unhandled error:', err);
     tl.setResult(tl.TaskResult.Failed, `Unhandled error: ${err.message}`);
-});
+}
+
+// Execute the task
+run().catch(handleUnhandledError);
+
+// Expose the handler for testing purposes
+// This conditional prevents it from affecting the actual behavior
+if (process.env.NODE_ENV === 'test') {
+    module.exports.__runCatchHandlerForTest = handleUnhandledError;
+}
