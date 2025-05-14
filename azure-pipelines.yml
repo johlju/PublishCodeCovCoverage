@@ -16,6 +16,18 @@ jobs:
       packageType: 'sdk'
       version: '5.x'
       installationPath: $(Agent.ToolsDirectory)/dotnet
+  - script: |
+      npm install
+      npm run test
+    displayName: 'Run tests'
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: 'junit.xml'
+      searchFolder: '$(System.DefaultWorkingDirectory)'
+      mergeTestResults: true
+      testRunTitle: 'Unit Tests'
+    condition: succeededOrFailed()
   - task: PublishCodeCovCoverage@1
     displayName: 'Upload code coverage to Codecov.io'
     inputs:

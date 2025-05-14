@@ -7,6 +7,10 @@ if [ ! -d "node_modules" ]; then
   npm install
 fi
 
+# Run tests
+echo "Running tests..."
+npm run test
+
 # Compile TypeScript
 echo "Compiling TypeScript..."
 npm run build

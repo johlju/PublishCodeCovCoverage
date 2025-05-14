@@ -29,14 +29,22 @@ Before using this extension, ensure you have the following:
    npm install
    ```
 
-4. Build and package the extension by running:
+4. Run the tests to ensure everything is working:
+
+   ```sh
+   npm run test
+   ```
+
+5. Build and package the extension by running:
 
    ```sh
    npm run package
    ```
 
-5. The packaged extension (.vsix) will be available in the `dist` directory.
-6. Upload this extension to your Azure DevOps organization or publish it to the marketplace.
+   Note: This will automatically run the tests before packaging.
+
+6. The packaged extension (.vsix) will be available in the `dist` directory.
+7. Upload this extension to your Azure DevOps organization or publish it to the marketplace.
 
 ## Usage
 
