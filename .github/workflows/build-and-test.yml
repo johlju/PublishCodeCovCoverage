@@ -23,5 +23,22 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Test
-        run: npm test -- --coverage
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./junit.xml
+          flags: unittests
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info,./coverage/clover.xml
+          flags: unittests
+          fail_ci_if_error: true
+          verbose: true
