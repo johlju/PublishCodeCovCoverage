@@ -1,0 +1,36 @@
+{
+  "manifestVersion": 1,
+  "id": "publish-codecov-coverage",
+  "name": "PublishCodeCovCoverage",
+  "version": "1.0.0",
+  "publisher": "Viscalyx",
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "description": "Azure Pipelines task for uploading code coverage reports to Codecov.io.",
+  "categories": [
+    "Azure Pipelines"
+  ],
+  "icons": {
+    "default": "images/icon.png"
+  },
+  "files": [
+    {
+      "path": "dist/PublishCodeCovCoverageTask"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "publish-codecov-coverage-task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": [
+        "ms.vss-distributed-task.tasks"
+      ],
+      "properties": {
+        "name": "dist/PublishCodeCovCoverageTask"
+      }
+    }
+  ]
+}

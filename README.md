@@ -1,6 +1,6 @@
 # Custom Azure Pipeline Extension for Codecov.io
 
-This repository contains a custom Azure Pipeline extension that handles code coverage uploads to Codecov.io. The extension can either use the Codecov API or the existing Codecov CLI to upload the coverage reports.
+This repository contains a custom Azure Pipeline extension that handles code coverage uploads to Codecov.io. The extension uses the official Codecov CLI to securely upload coverage reports.
 
 ## Prerequisites
 
@@ -9,8 +9,17 @@ Before using this extension, ensure you have the following:
 - An Azure DevOps account
 - A Codecov.io account
 - A Codecov token (CODECOV_TOKEN)
+- Node.js 20 or later
 
 ## Installation
+
+### For Users
+
+1. Download the latest `.vsix` file from the releases page.
+2. Upload the extension to your Azure DevOps organization through the Manage Extensions page.
+3. Add the task to your pipeline as described in the Usage section.
+
+### For Developers
 
 1. Clone this repository to your local machine.
 2. Navigate to the root directory of the repository.
@@ -20,20 +29,22 @@ Before using this extension, ensure you have the following:
    npm install
    ```
 
-4. Package the extension by running the following command:
+4. Build and package the extension by running:
 
    ```sh
-   tfx extension create --manifest-globs vss-extension.json
+   npm run package
    ```
 
-5. Publish the extension to the Azure DevOps marketplace or your organization.
+5. The packaged extension (.vsix) will be available in the `dist` directory.
+6. Upload this extension to your Azure DevOps organization or publish it to the marketplace.
 
 ## Usage
 
 To use the custom Azure Pipeline extension, follow these steps:
 
 1. Add the extension to your Azure Pipeline YAML file.
-2. Set the necessary environment variables (`CODECOV_TOKEN` and `CODECOV_URL`).
+2. Set the necessary environment variables (`CODECOV_TOKEN` and optionally `CODECOV_URL`).
+3. Configure the task with the proper build and test result folder paths.
 
 Here is an example of an Azure Pipeline YAML configuration:
 
@@ -45,7 +56,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 jobs:
-- job: CodeCoverageUpload
+- job: PublishCodeCovCoverage
   steps:
   - task: UseDotNet@2
     inputs:
@@ -53,14 +64,19 @@ jobs:
       version: '5.x'
       installationPath: $(Agent.ToolsDirectory)/dotnet
 
-  - task: CodeCoverageUploader@1
+  # Run your build and tests here
+  # ...
+  - task: PublishCodeCovCoverage@1
+    displayName: 'Upload code coverage to Codecov.io'
     inputs:
       buildFolderName: '$(Build.BinariesDirectory)'
       testResultFolderName: '$(Build.TestResultsDirectory)'
     env:
       CODECOV_TOKEN: $(CODECOV_TOKEN)
-      CODECOV_URL: $(CODECOV_URL)
+      # Optional: CODECOV_URL: $(CODECOV_URL)
 ```
+
+For detailed usage instructions, please see the [usage documentation](docs/usage.md).
 
 ## Contributing
 
