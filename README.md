@@ -1,2 +1,1 @@
-# PublishCodeCovCoverage
-A repository for an Azure Pipeline that uploads code coverage to Codecov
+This repository is empty. Any task executed on it should be considered a new capability and needs to be created.
