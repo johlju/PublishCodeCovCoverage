@@ -1,0 +1,38 @@
+{
+    "id": "CodeCoverageUploader",
+    "name": "Code Coverage Uploader",
+    "friendlyName": "Code Coverage Uploader",
+    "description": "Uploads code coverage reports to Codecov.io",
+    "helpMarkDown": "",
+    "category": "Utility",
+    "author": "Your Name",
+    "version": {
+        "Major": 1,
+        "Minor": 0,
+        "Patch": 0
+    },
+    "instanceNameFormat": "Upload code coverage to Codecov.io",
+    "inputs": [
+        {
+            "name": "buildFolderName",
+            "type": "string",
+            "label": "Build Folder Name",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "The name of the build folder containing the code coverage report"
+        },
+        {
+            "name": "testResultFolderName",
+            "type": "string",
+            "label": "Test Result Folder Name",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "The name of the test result folder containing the code coverage report"
+        }
+    ],
+    "execution": {
+        "Node": {
+            "target": "index.js"
+        }
+    }
+}
