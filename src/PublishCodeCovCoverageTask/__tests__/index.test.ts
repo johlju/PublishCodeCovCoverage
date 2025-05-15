@@ -23,12 +23,10 @@ describe('PublishCodeCovCoverage', () => {
 
     // Suppress console output
     jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    // Mock task lib
+    jest.spyOn(console, 'error').mockImplementation(() => {});    // Mock task lib
     (tl.getInput as jest.Mock).mockImplementation((name: string) => {
-      if (name === 'buildFolderName') return 'build';
       if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return '';
       return '';
     });
 
@@ -80,7 +78,7 @@ describe('PublishCodeCovCoverage', () => {
 
     // Mock process
     jest.spyOn(process, 'chdir').mockImplementation(() => {});
-    process.env = { CODECOV_TOKEN: 'mock-token', CODECOV_URL: 'https://codecov.io' };
+    process.env = { CODECOV_TOKEN: 'mock-token' };
 
     // Mock https.get
     const mockResponse = {
@@ -238,34 +236,37 @@ describe('PublishCodeCovCoverage', () => {
     expect(tl.setResourcePath).not.toHaveBeenCalled();
   });
 
-  test('should handle if coverage file not found', async () => {
-    // Mock coverage file not existing and command execution
-    (fs.existsSync as jest.Mock).mockImplementation((filePath: string) => {
-      if (filePath.includes('JaCoCo_coverage.xml')) return false;
-      return true;
-    });
-
-    (execSync as jest.Mock).mockImplementation((command: string) => {
-      if (command.includes('find') && command.includes('grep')) {
-        return 'found-file1.xml\nfound-file2.xml';
-      }
+  test('should use -s parameter when no coverageFileName is provided', async () => {
+    // Mock no coverage file name provided
+    const testResultFolder = 'testResults';
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'testResultFolderName') return testResultFolder;
+      if (name === 'coverageFileName') return ''; // No coverage file name
       return '';
     });
 
     await run();
 
-    // Verify execSync was called to search for files
-    expect(execSync).toHaveBeenCalledWith(
-      expect.stringContaining('find testResults -name "*.xml" | grep -i coverage'),
-      expect.anything()
+    // Should NOT try to perform any XML search with find and grep
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const findCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('find') && cmd.includes('*.xml') && cmd.includes('grep')
     );
-  });
+    expect(findCallIndex).toBe(-1);
 
-  test('should handle grep command error when searching for coverage files', async () => {
-    // Mock coverage file not existing and the find command throwing an error
-    (fs.existsSync as jest.Mock).mockImplementation((filePath: string) => {
-      if (filePath.includes('JaCoCo_coverage.xml')) return false;
-      return true;
+    // Verify that upload command uses -s parameter with test result folder
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );
+    expect(uploadCallIndex).toBeGreaterThan(-1);
+    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "${testResultFolder}"`);
+    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-f ');
+  });test('should use -s when no files found but not fail', async () => {
+    // Mock no coverage file name provided
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return '';
+      return '';
     });
 
     // Mock the grep command failing with an error (which is how it behaves when no files match)
@@ -279,11 +280,17 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // The command throwing should be caught and handled, and the run should complete
+    // Should still succeed since we're using -s parameter now
     expect(tl.setResult).toHaveBeenCalledWith(
-      tl.TaskResult.Failed,
-      'No coverage file found to upload'
+      tl.TaskResult.Succeeded,
+      'Code coverage uploaded successfully'
     );
+
+    // Verify it used the -s parameter
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "testResults"`);
   });
 
   test('should handle errors with stdout and stderr', async () => {
@@ -342,5 +349,168 @@ describe('PublishCodeCovCoverage', () => {
 
     // It should use current directory as fallback
     expect(path.join).toHaveBeenCalledWith('.', 'codecov_uploader');
+  });
+
+  test('should correctly handle verbose mode enabled', async () => {
+    // Mock tl.getBoolInput to return true for verbose
+    (tl.getBoolInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'verbose') return true;
+      return false;
+    });
+
+    await run();
+
+    // Verify that execSync was called with the --verbose flag
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringMatching(/\.\/codecov --verbose upload-process/),
+      expect.anything()
+    );
+  });
+
+  test('should correctly handle verbose mode disabled', async () => {
+    // Mock tl.getBoolInput to return false for verbose
+    (tl.getBoolInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'verbose') return false;
+      return false;
+    });
+
+    await run();
+
+    // Verify that execSync was called without the --verbose flag
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringMatching(/\.\/codecov upload-process/),
+      expect.anything()
+    );
+    expect(execSync).not.toHaveBeenCalledWith(
+      expect.stringMatching(/\.\/codecov --verbose/),
+      expect.anything()
+    );
+  });  test('should use -f parameter with the specified coverage file path if it exists', async () => {
+    // Mock specific coverage file name provided
+    const coverageFileName = 'custom-coverage.xml';
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return coverageFileName;
+      return '';
+    });
+
+    // Mock coverage file existing at the expected path
+    const expectedPath = `testResults/${coverageFileName}`;
+    (fs.existsSync as jest.Mock).mockImplementation((filePath: string) => {
+      return true; // Return true for all files to use the specified path
+    });
+
+    await run();
+
+    // Verify that a command to upload a file was called with the expected file path
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );
+
+    expect(uploadCallIndex).toBeGreaterThan(-1);
+    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-f "${expectedPath}"`);
+    expect(execSyncCalls[uploadCallIndex][0]).not.toContain(`-s "`);  // Should not contain -s parameter
+
+    // Verify that no file search was performed
+    const findCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('find') && cmd.includes('grep')
+    );
+
+    expect(findCallIndex).toBe(-1);
+  });  test('should throw error when specified file does not exist', async () => {
+    // Mock specific coverage file name provided but it doesn't exist
+    const coverageFileName = 'missing-coverage.xml';
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return coverageFileName;
+      return '';
+    });
+
+    // Mock coverage file NOT existing at the expected path
+    (fs.existsSync as jest.Mock).mockImplementation((filePath: string) => {
+      // The first check is for the specified file, which should not exist
+      if (filePath.includes(coverageFileName)) return false;
+      // Other files should exist to prevent other errors
+      return true;
+    });
+
+    await run();
+
+    // Should fail with an error message about the missing file
+    expect(tl.setResult).toHaveBeenCalledWith(
+      tl.TaskResult.Failed,
+      expect.stringContaining('Specified coverage file not found at')
+    );
+  });  // Test for the use -s parameter was combined with the previous test: 'should use -s parameter when no coverageFileName is provided'
+
+  test('should use coverageFileName as full path when testResultFolderName is not specified', async () => {
+    // Mock only coverage file name provided (as a full path)
+    const coverageFilePath = '/full/path/to/coverage.xml';
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'testResultFolderName') return ''; // No test result folder
+      if (name === 'coverageFileName') return coverageFilePath;
+      return '';
+    });
+
+    // Mock coverage file existing at the full path
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+    await run();
+
+    // Verify that execSync was called with the -f parameter and the full path
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );
+
+    expect(uploadCallIndex).toBeGreaterThan(-1);
+    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-f "${coverageFilePath}"`);
+    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-s ');
+  });
+
+  test('should fail when neither testResultFolderName nor coverageFileName is specified', async () => {
+    // Mock neither parameter provided
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'testResultFolderName') return ''; // No test result folder
+      if (name === 'coverageFileName') return ''; // No coverage file name
+      return '';
+    });
+
+    await run();
+
+    // Should fail with an error message about requiring one of the parameters
+    expect(tl.setResult).toHaveBeenCalledWith(
+      tl.TaskResult.Failed,
+      'Either coverageFileName or testResultFolderName must be specified'
+    );
+  });
+
+  test('should add --network-root-folder parameter when networkRootFolder is specified', async () => {
+    // Mock with networkRootFolder provided
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return '';
+      if (name === 'networkRootFolder') return 'src';
+      return '';
+    });
+
+    // Reset mocks
+    jest.clearAllMocks();
+    (execSync as jest.Mock).mockReturnValue('');
+
+    // Set up file system mocks
+    (fs.existsSync as jest.Mock).mockImplementation((path: string) => true);
+
+    await run();
+
+    // Verify that upload command includes the --network-root-folder parameter
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );
+    expect(uploadCallIndex).toBeGreaterThan(-1);
+    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "testResults"`);
+    expect(execSyncCalls[uploadCallIndex][0]).toContain(`--network-root-folder "src"`);
   });
 });

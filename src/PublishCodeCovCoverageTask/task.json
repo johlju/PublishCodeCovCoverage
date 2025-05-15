@@ -14,20 +14,36 @@
     "instanceNameFormat": "Upload code coverage to Codecov.io",
     "inputs": [
         {
-            "name": "buildFolderName",
-            "type": "string",
-            "label": "Build Folder Name",
-            "defaultValue": "",
-            "required": true,
-            "helpMarkDown": "The name of the build folder containing the code coverage report"
-        },
-        {
             "name": "testResultFolderName",
             "type": "string",
             "label": "Test Result Folder Name",
             "defaultValue": "",
             "required": true,
             "helpMarkDown": "The name of the test result folder containing the code coverage report"
+        },
+        {
+            "name": "verbose",
+            "type": "boolean",
+            "label": "Enable Verbose Output",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "Enable verbose output for the Codecov uploader"
+        },
+        {
+            "name": "coverageFileName",
+            "type": "string",
+            "label": "Coverage File Name",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "The name of the coverage file (e.g., 'coverage.xml'). If specified, argument -f will be used with this file. If not specified, argument -s will be used with the test result folder path."
+        },
+        {
+            "name": "networkRootFolder",
+            "type": "string",
+            "label": "Network Root Folder",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified."
         }
     ],
     "execution": {

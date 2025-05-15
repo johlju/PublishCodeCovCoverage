@@ -51,7 +51,7 @@ Before using this extension, ensure you have the following:
 To use the custom Azure Pipeline extension, follow these steps:
 
 1. Add the extension to your Azure Pipeline YAML file.
-2. Set the necessary environment variables (`CODECOV_TOKEN` and optionally `CODECOV_URL`).
+2. Set the necessary environment variables `CODECOV_TOKEN`.
 3. Configure the task with the proper build and test result folder paths.
 
 Here is an example of an Azure Pipeline YAML configuration:
@@ -81,7 +81,6 @@ jobs:
       testResultFolderName: '$(Build.TestResultsDirectory)'
     env:
       CODECOV_TOKEN: $(CODECOV_TOKEN)
-      # Optional: CODECOV_URL: $(CODECOV_URL)
 ```
 
 For detailed usage instructions, please see the [usage documentation](docs/usage.md).

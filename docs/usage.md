@@ -20,28 +20,83 @@ The task requires the following input parameters:
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| buildFolderName | The path to the build folder containing the code coverage report | Yes |
-| testResultFolderName | The path to the test result folder within the build folder | Yes |
+| testResultFolderName | The path to the test result folder containing the code coverage report | Yes |
+| coverageFileName | The name of the coverage file (e.g., 'coverage.xml'). If specified, argument -f will be used with this file. If not specified, argument -s will be used with the test result folder path. | No |
+| networkRootFolder | Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified. | No |
+| verbose | Enable verbose output for the Codecov uploader | No |
 
 The task also requires the following environment variables:
 
 | Variable | Description | Required |
 |-----------|-------------|----------|
 | CODECOV_TOKEN | Your Codecov.io API token | Yes |
-| CODECOV_URL | The Codecov.io URL (default: https://codecov.io) | No |
 
-## Example
+## Examples
+
+### Example 1: Using specific coverage file
 
 ```yaml
 steps:
 - task: PublishCodeCovCoverage@1
-  displayName: 'Upload code coverage to Codecov.io'
+  displayName: 'Upload specific coverage file to Codecov.io'
   inputs:
-    buildFolderName: '$(Build.BinariesDirectory)'
-    testResultFolderName: '$(Build.TestResultsDirectory)'
+    testResultFolderName: '$(Build.SourcesDirectory)/output/testResults'
+    coverageFileName: 'output/testResults/JaCoCo_coverage.xml'
+    verbose: true
   env:
     CODECOV_TOKEN: $(CODECOV_TOKEN)
-    CODECOV_URL: $(CODECOV_URL)
+```
+
+### Example 2: Upload by directory (without specifying file)
+
+```yaml
+steps:
+- task: PublishCodeCovCoverage@1
+  displayName: 'Upload directory to Codecov.io'
+  inputs:
+    testResultFolderName: '$(Build.SourcesDirectory)/coverage'
+    verbose: true
+  env:
+    CODECOV_TOKEN: $(CODECOV_TOKEN)
+```
+
+### Example 3: Using network root folder to fix path mapping issues
+
+```yaml
+steps:
+- task: PublishCodeCovCoverage@1
+  displayName: 'Upload to Codecov.io with path mapping'
+  inputs:
+    testResultFolderName: '$(Build.SourcesDirectory)/coverage'
+    networkRootFolder: 'src'
+    verbose: true
+  env:
+    CODECOV_TOKEN: $(CODECOV_TOKEN)
+```
+
+This example uses the `networkRootFolder` parameter to help Codecov.io correctly map file paths in the coverage report to your repository structure. This is particularly useful when you encounter "Unusable report due to source code unavailability" or "path mismatch" errors.
+
+```yaml
+steps:
+- task: PublishCodeCovCoverage@1
+  displayName: 'Upload all coverage from directory to Codecov.io'
+  inputs:
+    testResultFolderName: '$(Build.SourcesDirectory)/output/testResults'
+  env:
+    CODECOV_TOKEN: $(CODECOV_TOKEN)
+```
+
+### Example 4: Upload by directory (specifying file)
+
+```yaml
+steps:
+- task: PublishCodeCovCoverage@1
+  displayName: 'Upload all coverage from directory to Codecov.io'
+  inputs:
+    testResultFolderName: '$(Build.SourcesDirectory)/output/testResults'
+    coverageFileName: 'JaCoCo_coverage.xml'
+  env:
+    CODECOV_TOKEN: $(CODECOV_TOKEN)
 ```
 
 ## How it works
@@ -50,7 +105,9 @@ The task performs the following steps:
 
 1. Downloads the Codecov CLI from the official source.
 2. Verifies the CLI using PGP keys and SHA256 checksums.
-3. Executes the CLI to upload the coverage report to Codecov.io.
+3. Uploads coverage to Codecov.io in one of two ways:
+   - If `coverageFileName` is provided and exists, uses the `-f` parameter to upload the specific file
+   - If `coverageFileName` is not provided, uses the `-s` parameter with `testResultFolderName` to upload all coverage from the directory
 
 ## Troubleshooting
 
