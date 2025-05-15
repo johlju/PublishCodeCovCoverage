@@ -55,7 +55,8 @@ jobs:
           # Pass the test result folder name containing coverage files
           # Using absolute path to ensure we're pointing to the right coverage directory
           #INPUT_TESTRESULTFOLDERNAME: '${{ github.workspace }}/coverage'
-          INPUT_COVERAGEFILENAME: '${{ github.workspace }}/coverage/clover.xml'
+          #INPUT_COVERAGEFILENAME: '${{ github.workspace }}/coverage/clover.xml'
           #INPUT_COVERAGEFILENAME: '${{ github.workspace }}/coverage/lcov.info'
+          INPUT_COVERAGEFILENAME: '${{ github.workspace }}/coverage/coverage-final.json'
           # Enable verbose output for better debugging
           INPUT_VERBOSE: 'true'
