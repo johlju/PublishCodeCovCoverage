@@ -9,7 +9,7 @@ Before using this extension, ensure you have the following:
 - An Azure DevOps account
 - A Codecov.io account
 - A Codecov token (CODECOV_TOKEN)
-- Node.js 20 or later
+- Node.js 22 or later
 
 ## Installation
 

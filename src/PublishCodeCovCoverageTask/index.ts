@@ -11,18 +11,19 @@ export async function run(): Promise<void> {
         if (fs.existsSync(taskJsonPath)) {
             tl.setResourcePath(taskJsonPath);
         }
-          // Get input parameters
+
+        // Get input parameters
         const buildFolderName = tl.getInput('buildFolderName', true) || '';
         const testResultFolderName = tl.getInput('testResultFolderName', true) || '';
+        const verbose = tl.getBoolInput('verbose', false) || false;
 
         // Get environment variables
         const codecovToken = tl.getVariable('CODECOV_TOKEN') || process.env.CODECOV_TOKEN;
-        const codecovUrl = tl.getVariable('CODECOV_URL') || process.env.CODECOV_URL || 'https://codecov.io';
 
         console.log('Uploading code coverage to Codecov.io');
         console.log(`Build folder: ${buildFolderName}`);
         console.log(`Test result folder: ${testResultFolderName}`);
-        console.log(`Codecov URL: ${codecovUrl}`);
+        console.log(`Verbose mode: ${verbose ? 'enabled' : 'disabled'}`);
 
         if (!codecovToken) {
             throw new Error('CODECOV_TOKEN environment variable is not set');
@@ -91,11 +92,15 @@ export async function run(): Promise<void> {
 
         console.log(`Uploading coverage file: ${actualCoverageFilePath}`);
 
-        execSync(`./codecov upload-process -f "${actualCoverageFilePath}" -t "${codecovToken}" -u "${codecovUrl}"`, {
+        const verboseFlag = verbose ? ' --verbose' : '';
+
+        // Upload the coverage file, see https://github.com/codecov/codecov-cli
+        execSync(`./codecov${verboseFlag} upload-process -f "${actualCoverageFilePath}" -t "${codecovToken}"`, {
             stdio: 'inherit'
         });
 
         console.log('Upload completed successfully');
+
         tl.setResult(tl.TaskResult.Succeeded, 'Code coverage uploaded successfully');
 
     } catch (err: any) {

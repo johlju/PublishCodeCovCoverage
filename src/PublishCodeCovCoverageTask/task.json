@@ -28,6 +28,14 @@
             "defaultValue": "",
             "required": true,
             "helpMarkDown": "The name of the test result folder containing the code coverage report"
+        },
+        {
+            "name": "verbose",
+            "type": "boolean",
+            "label": "Enable Verbose Output",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "Enable verbose output for the Codecov uploader"
         }
     ],
     "execution": {

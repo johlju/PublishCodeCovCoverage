@@ -80,7 +80,7 @@ describe('PublishCodeCovCoverage', () => {
 
     // Mock process
     jest.spyOn(process, 'chdir').mockImplementation(() => {});
-    process.env = { CODECOV_TOKEN: 'mock-token', CODECOV_URL: 'https://codecov.io' };
+    process.env = { CODECOV_TOKEN: 'mock-token' };
 
     // Mock https.get
     const mockResponse = {
@@ -342,5 +342,64 @@ describe('PublishCodeCovCoverage', () => {
 
     // It should use current directory as fallback
     expect(path.join).toHaveBeenCalledWith('.', 'codecov_uploader');
+  });
+
+  test('should correctly handle verbose mode enabled', async () => {
+    // Mock tl.getBoolInput to return true for verbose
+    (tl.getBoolInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'verbose') return true;
+      return false;
+    });
+
+    await run();
+
+    // Verify that execSync was called with the --verbose flag
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringMatching(/\.\/codecov --verbose upload-process/),
+      expect.anything()
+    );
+  });
+
+  test('should correctly handle verbose mode disabled', async () => {
+    // Mock tl.getBoolInput to return false for verbose
+    (tl.getBoolInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'verbose') return false;
+      return false;
+    });
+
+    await run();
+
+    // Verify that execSync was called without the --verbose flag
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringMatching(/\.\/codecov upload-process/),
+      expect.anything()
+    );
+    expect(execSync).not.toHaveBeenCalledWith(
+      expect.stringMatching(/\.\/codecov --verbose/),
+      expect.anything()
+    );
+  });
+
+  test('should use the expected coverage file path if it exists', async () => {
+    // Mock coverage file existing at the expected path
+    const expectedPath = 'build/testResults/JaCoCo_coverage.xml';
+    (fs.existsSync as jest.Mock).mockImplementation((filePath: string) => {
+      if (filePath === expectedPath) return true;
+      return true; // Return true for other files to avoid other errors
+    });
+
+    await run();
+
+    // Verify that execSync was called with the expected file path
+    expect(execSync).toHaveBeenCalledWith(
+      expect.stringMatching(new RegExp(`-f "${expectedPath}"`)),
+      expect.anything()
+    );
+
+    // Verify that no file search was performed
+    expect(execSync).not.toHaveBeenCalledWith(
+      expect.stringMatching(/find.*grep/),
+      expect.anything()
+    );
   });
 });
