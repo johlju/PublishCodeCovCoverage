@@ -88,7 +88,7 @@ steps:
     CODECOV_TOKEN: $(CODECOV_TOKEN)
 ```
 
-### Example 3: Upload by directory (specifying file)
+### Example 4: Upload by directory (specifying file)
 
 ```yaml
 steps:
