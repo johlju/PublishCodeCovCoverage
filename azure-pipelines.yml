@@ -1,5 +1,15 @@
 trigger:
-- main
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - src/**
+  tags:
+    include:
+    - "v*"
+    exclude:
+    - "*-*"
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -17,8 +27,8 @@ jobs:
       version: '5.x'
       installationPath: $(Agent.ToolsDirectory)/dotnet
   - script: |
-      npm install
-      npm run test
+      npm ci
+      npm run build
     displayName: 'Run tests'
   - task: PublishTestResults@2
     inputs:
@@ -31,8 +41,7 @@ jobs:
   - task: PublishCodeCovCoverage@1
     displayName: 'Upload code coverage to Codecov.io'
     inputs:
-      testResultFolderName: '$(Build.TestResultsDirectory)'
-      coverageFileName: 'JaCoCo_coverage.xml'
+      testResultFolderName: '$(Build.SourcesDirectory)/coverage'
       verbose: true
     env:
       CODECOV_TOKEN: $(CODECOV_TOKEN)

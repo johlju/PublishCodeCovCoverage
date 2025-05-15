@@ -13,16 +13,18 @@ export async function run(): Promise<void> {
         }
 
         // Get input parameters
-        const testResultFolderName = tl.getInput('testResultFolderName', true) || '';
+        const testResultFolderName = tl.getInput('testResultFolderName', false) || '';
         const coverageFileName = tl.getInput('coverageFileName', false) || '';
         const verbose = tl.getBoolInput('verbose', false) || false;
 
         // Get environment variables
-        const codecovToken = tl.getVariable('CODECOV_TOKEN') || process.env.CODECOV_TOKEN;
-
-        console.log('Uploading code coverage to Codecov.io');
-        console.log(`Test result folder: ${testResultFolderName}`);
-        console.log(`Coverage file name: ${coverageFileName || 'not specified - will search for XML files'}`);
+        const codecovToken = tl.getVariable('CODECOV_TOKEN') || process.env.CODECOV_TOKEN;        console.log('Uploading code coverage to Codecov.io');
+        console.log(`Test result folder: ${testResultFolderName || 'not specified'}`);
+        if (coverageFileName) {
+            console.log(`Coverage file name: ${coverageFileName}${!testResultFolderName ? ' (using as full path)' : ''}`);
+        } else {
+            console.log(`Coverage file name: not specified - will use test result folder`);
+        }
         console.log(`Verbose mode: ${verbose ? 'enabled' : 'disabled'}`);
 
         if (!codecovToken) {
@@ -67,45 +69,41 @@ export async function run(): Promise<void> {
         let actualCoverageFilePath = '';
 
         if (coverageFileName) {
-            // Use the specified coverage file name
-            actualCoverageFilePath = path.join(testResultFolderName, coverageFileName);
+            // If testResultFolderName is provided, join it with coverageFileName
+            // Otherwise, treat coverageFileName as a full path
+            if (testResultFolderName) {
+                actualCoverageFilePath = path.join(testResultFolderName, coverageFileName);
+            } else {
+                actualCoverageFilePath = coverageFileName;
+            }
 
             if (!fs.existsSync(actualCoverageFilePath)) {
-                console.log(`Warning: Specified coverage file not found at ${actualCoverageFilePath}`);
-                console.log('Looking for coverage files in the test result directory...');
-                actualCoverageFilePath = ''; // Reset to trigger search
+                throw new Error(`Specified coverage file not found at ${actualCoverageFilePath}`);
             }
         }
-
-        // If no file specified or specified file not found, search for XML files
-        if (!actualCoverageFilePath) {
-            console.log('Searching for XML coverage files in the test result directory...');
-
-            // Try to find any XML coverage files
-            try {
-                const result = execSync(`find ${testResultFolderName} -name "*.xml" | grep -i coverage`, { encoding: 'utf8' });
-                if (result.trim()) {
-                    // Get the first found file
-                    const foundFiles = result.trim().split('\n');
-                    actualCoverageFilePath = foundFiles[0].trim();
-                    console.log(`Found potential coverage files: ${result}`);
-                    console.log(`Using the first found coverage file: ${actualCoverageFilePath}`);
-                }
-            } catch (error) {
-                console.log('No coverage files found');
-            }
-        }
-
-        if (!fs.existsSync(actualCoverageFilePath)) {
-            throw new Error(`No coverage file found to upload`);
-        }
-
-        console.log(`Uploading coverage file: ${actualCoverageFilePath}`);
 
         const verboseFlag = verbose ? ' --verbose' : '';
+        let uploadCommand = `./codecov${verboseFlag} upload-process`;
 
-        // Upload the coverage file, see https://github.com/codecov/codecov-cli
-        execSync(`./codecov${verboseFlag} upload-process -f "${actualCoverageFilePath}" -t "${codecovToken}"`, {
+        // If coverageFileName was provided, use -f with the file path
+        if (coverageFileName) {
+            console.log(`Uploading specific coverage file: ${actualCoverageFilePath}`);
+            uploadCommand += ` -f "${actualCoverageFilePath}"`;
+        }
+        // Otherwise use -s with the testResultFolderName directory if it's specified
+        else if (testResultFolderName) {
+            console.log(`Uploading from directory: ${testResultFolderName}`);
+            uploadCommand += ` -s "${testResultFolderName}"`;
+        }
+        else {
+            throw new Error('Either coverageFileName or testResultFolderName must be specified');
+        }
+
+        uploadCommand += ` -t "${codecovToken}"`;
+
+        // Execute the upload command
+        console.log(`Executing command: ${uploadCommand}`);
+        execSync(uploadCommand, {
             stdio: 'inherit'
         });
 
