@@ -99,10 +99,11 @@ export async function run(): Promise<void> {
             throw new Error('Either coverageFileName or testResultFolderName must be specified');
         }
 
+        // Add the token to the command
         uploadCommand += ` -t "${codecovToken}"`;
 
-        // Execute the upload command
-        console.log(`Executing command: ${uploadCommand}`);
+        // Log the command with redacted token
+        console.log(`Executing command: ${uploadCommand.replace(codecovToken, '***redacted***')}`);
         execSync(uploadCommand, {
             stdio: 'inherit'
         });
