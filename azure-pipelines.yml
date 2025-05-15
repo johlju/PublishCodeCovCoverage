@@ -31,8 +31,9 @@ jobs:
   - task: PublishCodeCovCoverage@1
     displayName: 'Upload code coverage to Codecov.io'
     inputs:
-      buildFolderName: '$(Build.BinariesDirectory)'
       testResultFolderName: '$(Build.TestResultsDirectory)'
+      coverageFileName: 'JaCoCo_coverage.xml'
+      verbose: true
     env:
       CODECOV_TOKEN: $(CODECOV_TOKEN)
       CODECOV_URL: $(CODECOV_URL)

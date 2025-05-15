@@ -13,16 +13,16 @@ export async function run(): Promise<void> {
         }
 
         // Get input parameters
-        const buildFolderName = tl.getInput('buildFolderName', true) || '';
         const testResultFolderName = tl.getInput('testResultFolderName', true) || '';
+        const coverageFileName = tl.getInput('coverageFileName', false) || '';
         const verbose = tl.getBoolInput('verbose', false) || false;
 
         // Get environment variables
         const codecovToken = tl.getVariable('CODECOV_TOKEN') || process.env.CODECOV_TOKEN;
 
         console.log('Uploading code coverage to Codecov.io');
-        console.log(`Build folder: ${buildFolderName}`);
         console.log(`Test result folder: ${testResultFolderName}`);
+        console.log(`Coverage file name: ${coverageFileName || 'not specified - will search for XML files'}`);
         console.log(`Verbose mode: ${verbose ? 'enabled' : 'disabled'}`);
 
         if (!codecovToken) {
@@ -64,12 +64,22 @@ export async function run(): Promise<void> {
         fs.chmodSync('codecov', '755');
 
         // Check if coverage file exists
-        const coverageFilePath = path.join(buildFolderName, testResultFolderName, 'JaCoCo_coverage.xml');
-        let actualCoverageFilePath = coverageFilePath;
+        let actualCoverageFilePath = '';
 
-        if (!fs.existsSync(actualCoverageFilePath)) {
-            console.log(`Warning: Coverage file not found at ${actualCoverageFilePath}`);
-            console.log('Looking for coverage files in the test result directory...');
+        if (coverageFileName) {
+            // Use the specified coverage file name
+            actualCoverageFilePath = path.join(testResultFolderName, coverageFileName);
+
+            if (!fs.existsSync(actualCoverageFilePath)) {
+                console.log(`Warning: Specified coverage file not found at ${actualCoverageFilePath}`);
+                console.log('Looking for coverage files in the test result directory...');
+                actualCoverageFilePath = ''; // Reset to trigger search
+            }
+        }
+
+        // If no file specified or specified file not found, search for XML files
+        if (!actualCoverageFilePath) {
+            console.log('Searching for XML coverage files in the test result directory...');
 
             // Try to find any XML coverage files
             try {
