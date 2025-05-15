@@ -33,3 +33,7 @@ flags:
     paths:
       - src/
     carryforward: true
+
+
+fixes:
+- "/home/runner/work/PublishCodeCovCoverage/PublishCodeCovCoverage/::"
