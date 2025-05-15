@@ -45,4 +45,3 @@ jobs:
       verbose: true
     env:
       CODECOV_TOKEN: $(CODECOV_TOKEN)
-      CODECOV_URL: $(CODECOV_URL)
