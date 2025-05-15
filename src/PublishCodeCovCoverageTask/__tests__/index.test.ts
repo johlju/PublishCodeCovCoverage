@@ -234,7 +234,9 @@ describe('PublishCodeCovCoverage', () => {
 
     // Verify that setResourcePath was not called
     expect(tl.setResourcePath).not.toHaveBeenCalled();
-  });  test('should use -s parameter when no coverageFileName is provided', async () => {
+  });
+
+  test('should use -s parameter when no coverageFileName is provided', async () => {
     // Mock no coverage file name provided
     const testResultFolder = 'testResults';
     (tl.getInput as jest.Mock).mockImplementation((name: string) => {
