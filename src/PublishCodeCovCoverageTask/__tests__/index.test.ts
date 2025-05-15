@@ -411,7 +411,7 @@ describe('PublishCodeCovCoverage', () => {
     });
 
     // Mock coverage file existing at the expected path
-    const expectedPath = `build/testResults/${coverageFileName}`;
+    const expectedPath = `testResults/${coverageFileName}`;
     (fs.existsSync as jest.Mock).mockImplementation((filePath: string) => {
       return true; // Return true for all files to use the specified path
     });
