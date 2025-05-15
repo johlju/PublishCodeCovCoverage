@@ -30,7 +30,6 @@ The task also requires the following environment variables:
 | Variable | Description | Required |
 |-----------|-------------|----------|
 | CODECOV_TOKEN | Your Codecov.io API token | Yes |
-| CODECOV_URL | The Codecov.io URL (default: https://codecov.io) | No |
 
 ## Examples
 
@@ -46,7 +45,6 @@ steps:
     verbose: true
   env:
     CODECOV_TOKEN: $(CODECOV_TOKEN)
-    CODECOV_URL: $(CODECOV_URL)
 ```
 
 ### Example 2: Upload by directory (without specifying file)
