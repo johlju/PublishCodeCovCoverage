@@ -19,7 +19,8 @@ export async function run(): Promise<void> {
         const verbose = tl.getBoolInput('verbose', false) || false;
 
         // Get environment variables
-        const codecovToken = tl.getVariable('CODECOV_TOKEN') || process.env.CODECOV_TOKEN;        console.log('Uploading code coverage to Codecov.io');
+        const codecovToken = tl.getVariable('CODECOV_TOKEN') || process.env.CODECOV_TOKEN;
+        console.log('Uploading code coverage to Codecov.io');
         console.log(`Test result folder: ${testResultFolderName || 'not specified'}`);
         if (coverageFileName) {
             console.log(`Coverage file name: ${coverageFileName}${!testResultFolderName ? ' (using as full path)' : ''}`);
