@@ -15,6 +15,7 @@ export async function run(): Promise<void> {
         // Get input parameters
         const testResultFolderName = tl.getInput('testResultFolderName', false) || '';
         const coverageFileName = tl.getInput('coverageFileName', false) || '';
+        const networkRootFolder = tl.getInput('networkRootFolder', false) || '';
         const verbose = tl.getBoolInput('verbose', false) || false;
 
         // Get environment variables
@@ -24,6 +25,9 @@ export async function run(): Promise<void> {
             console.log(`Coverage file name: ${coverageFileName}${!testResultFolderName ? ' (using as full path)' : ''}`);
         } else {
             console.log(`Coverage file name: not specified - will use test result folder`);
+        }
+        if (networkRootFolder) {
+            console.log(`Network root folder: ${networkRootFolder}`);
         }
         console.log(`Verbose mode: ${verbose ? 'enabled' : 'disabled'}`);
 
@@ -81,7 +85,6 @@ export async function run(): Promise<void> {
                 throw new Error(`Specified coverage file not found at ${actualCoverageFilePath}`);
             }
         }
-
         const verboseFlag = verbose ? ' --verbose' : '';
         let uploadCommand = `./codecov${verboseFlag} upload-process`;
 
@@ -97,6 +100,12 @@ export async function run(): Promise<void> {
         }
         else {
             throw new Error('Either coverageFileName or testResultFolderName must be specified');
+        }
+
+        // Add network root folder if specified
+        if (networkRootFolder) {
+            console.log(`Adding network root folder: ${networkRootFolder}`);
+            uploadCommand += ` --network-root-folder "${networkRootFolder}"`;
         }
 
         // Add the token to the command

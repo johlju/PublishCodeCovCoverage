@@ -36,6 +36,14 @@
             "defaultValue": "",
             "required": false,
             "helpMarkDown": "The name of the coverage file (e.g., 'coverage.xml'). If specified, argument -f will be used with this file. If not specified, argument -s will be used with the test result folder path."
+        },
+        {
+            "name": "networkRootFolder",
+            "type": "string",
+            "label": "Network Root Folder",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified."
         }
     ],
     "execution": {

@@ -22,6 +22,7 @@ The task requires the following input parameters:
 |-----------|-------------|----------|
 | testResultFolderName | The path to the test result folder containing the code coverage report | Yes |
 | coverageFileName | The name of the coverage file (e.g., 'coverage.xml'). If specified, argument -f will be used with this file. If not specified, argument -s will be used with the test result folder path. | No |
+| networkRootFolder | Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified. | No |
 | verbose | Enable verbose output for the Codecov uploader | No |
 
 The task also requires the following environment variables:
@@ -49,6 +50,33 @@ steps:
 ```
 
 ### Example 2: Upload by directory (without specifying file)
+
+```yaml
+steps:
+- task: PublishCodeCovCoverage@1
+  displayName: 'Upload directory to Codecov.io'
+  inputs:
+    testResultFolderName: '$(Build.SourcesDirectory)/coverage'
+    verbose: true
+  env:
+    CODECOV_TOKEN: $(CODECOV_TOKEN)
+```
+
+### Example 3: Using network root folder to fix path mapping issues
+
+```yaml
+steps:
+- task: PublishCodeCovCoverage@1
+  displayName: 'Upload to Codecov.io with path mapping'
+  inputs:
+    testResultFolderName: '$(Build.SourcesDirectory)/coverage'
+    networkRootFolder: 'src'
+    verbose: true
+  env:
+    CODECOV_TOKEN: $(CODECOV_TOKEN)
+```
+
+This example uses the `networkRootFolder` parameter to help Codecov.io correctly map file paths in the coverage report to your repository structure. This is particularly useful when you encounter "Unusable report due to source code unavailability" or "path mismatch" errors.
 
 ```yaml
 steps:

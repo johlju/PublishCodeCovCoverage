@@ -483,4 +483,32 @@ describe('PublishCodeCovCoverage', () => {
       'Either coverageFileName or testResultFolderName must be specified'
     );
   });
+
+  test('should add --network-root-folder parameter when networkRootFolder is specified', async () => {
+    // Mock with networkRootFolder provided
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return '';
+      if (name === 'networkRootFolder') return 'src';
+      return '';
+    });
+
+    // Reset mocks
+    jest.clearAllMocks();
+    (execSync as jest.Mock).mockReturnValue('');
+
+    // Set up file system mocks
+    (fs.existsSync as jest.Mock).mockImplementation((path: string) => true);
+
+    await run();
+
+    // Verify that upload command includes the --network-root-folder parameter
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );
+    expect(uploadCallIndex).toBeGreaterThan(-1);
+    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "testResults"`);
+    expect(execSyncCalls[uploadCallIndex][0]).toContain(`--network-root-folder "src"`);
+  });
 });
