@@ -34,12 +34,13 @@ jobs:
           fail_ci_if_error: true
           verbose: true
 
-      - name: Upload coverage to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info,./coverage/clover.xml
-          flags: unit
-          fail_ci_if_error: true
-          verbose: true
+      # - name: Upload coverage to Codecov
+      #   if: ${{ !cancelled() }}
+      #   uses: codecov/codecov-action@v5
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     files: ./coverage/lcov.info,./coverage/clover.xml
+      #     run_command: upload-coverage
+      #     flags: unit
+      #     fail_ci_if_error: true
+      #     verbose: true
