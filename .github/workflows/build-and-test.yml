@@ -35,29 +35,13 @@ jobs:
           verbose: true
 
       - name: Upload coverage using our own task
+        working-directory: dist/PublishCodeCovCoverageTask
         if: ${{ !cancelled() }}
-        run: |
-          # Set the environment variable for the Codecov token
-          export CODECOV_TOKEN=${{ secrets.CODECOV_TOKEN }}
-
-          # Store the workspace root directory
-          export WORKSPACE_ROOT=$GITHUB_WORKSPACE
-
-          # Change to the distribution directory with our built task
-          cd dist/PublishCodeCovCoverageTask
-
-          # List files in the current directory to verify contents
-          ls -la
-
-          # Execute our own task with Node.js to upload the coverage files
-          node index.js
+        run: node index.js
         env:
           # Pass the test result folder name containing coverage files
           # Using absolute path to ensure we're pointing to the right coverage directory
           INPUT_TESTRESULTFOLDERNAME: '${{ github.workspace }}/coverage'
-          #INPUT_COVERAGEFILENAME: '${{ github.workspace }}/coverage/clover.xml'
-          #INPUT_COVERAGEFILENAME: '${{ github.workspace }}/coverage/lcov.info'
-          #INPUT_COVERAGEFILENAME: '${{ github.workspace }}/coverage/coverage-final.json'
           INPUT_NETWORKROOTFOLDER: '${{ github.workspace }}'
-          # Enable verbose output for better debugging
           INPUT_VERBOSE: 'true'
+          INPUT_CODECOVTOKEN: '${{ secrets.CODECOV_TOKEN }}'
