@@ -21,12 +21,21 @@ export async function run(): Promise<void> {
         // Get token from task input or pipeline variable
         const codecovTokenInput = tl.getInput('codecovToken', false);
         const codecovToken = codecovTokenInput || tl.getVariable('CODECOV_TOKEN');
-
         // If value provided as input or pipeline variable, override process.env.CODECOV_TOKEN
         if (codecovToken) {
-            process.env.CODECOV_TOKEN = codecovToken;
+            const existingToken = process.env.CODECOV_TOKEN;
 
-            console.log('Environment variable CODECOV_TOKEN has been set');
+            if (!existingToken) {
+                process.env.CODECOV_TOKEN = codecovToken;
+                console.log('Environment variable CODECOV_TOKEN has been set');
+            } else if (existingToken !== codecovToken) {
+                process.env.CODECOV_TOKEN = codecovToken;
+                console.log('Environment variable CODECOV_TOKEN has been overridden with new value');
+            } else {
+                console.log('Environment variable CODECOV_TOKEN already has the correct value, not changing');
+            }
+        } else if(!process.env.CODECOV_TOKEN) {
+            throw new Error('CODECOV_TOKEN environment variable is not set or passed as input or pipeline variable');
         }
 
         console.log('Uploading code coverage to Codecov.io');
@@ -40,10 +49,6 @@ export async function run(): Promise<void> {
             console.log(`Network root folder: ${networkRootFolder}`);
         }
         console.log(`Verbose mode: ${verbose ? 'enabled' : 'disabled'}`);
-
-        if (!codecovToken) {
-            throw new Error('CODECOV_TOKEN environment variable is not set');
-        }
 
         // Save the original working directory to resolve relative paths later
         const originalWorkingDir = process.cwd();
