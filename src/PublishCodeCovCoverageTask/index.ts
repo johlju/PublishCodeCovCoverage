@@ -139,7 +139,7 @@ export async function run(): Promise<void> {
             uploadCommand += ` --network-root-folder "${resolvedNetworkRootFolder}"`;
         }
 
-        // Log the command with redacted token
+        // Log the command
         console.log(`Executing command: ${uploadCommand}`);
         execSync(uploadCommand, {
             stdio: 'inherit'
