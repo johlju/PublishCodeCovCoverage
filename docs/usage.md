@@ -76,6 +76,8 @@ steps:
 
 This example uses the `networkRootFolder` parameter to help Codecov.io correctly map file paths in the coverage report to your repository structure. This is particularly useful when you encounter "Unusable report due to source code unavailability" or "path mismatch" errors.
 
+### Example 4: Upload by directory (without specifying file)
+
 ```yaml
 steps:
 - task: PublishCodeCovCoverage@1
@@ -86,7 +88,7 @@ steps:
     CODECOV_TOKEN: $(CODECOV_TOKEN)
 ```
 
-### Example 4: Upload by directory (specifying file)
+### Example 5: Upload by directory (specifying file)
 
 ```yaml
 steps:
