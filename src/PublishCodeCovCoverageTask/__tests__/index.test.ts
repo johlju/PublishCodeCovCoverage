@@ -111,6 +111,11 @@ describe('PublishCodeCovCoverage', () => {
     });
   });
 
+  afterEach(() => {
+    // Restore console mocks to prevent side effects between tests
+    jest.restoreAllMocks();
+  });
+
   test('run function should complete successfully', async () => {
     await run();
 
@@ -483,8 +488,7 @@ describe('PublishCodeCovCoverage', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(true);
 
     // Override path.resolve for this test to simulate what happens with the actual paths
-    const originalResolve = path.resolve;
-    (path.resolve as jest.Mock).mockImplementation((...args: string[]) => {
+    jest.spyOn(path, 'resolve').mockImplementation((...args: string[]) => {
       // When resolving the coverage file path with original working directory, return the path without doubling
       if (args.length === 2 && args[1] === coverageFilePath) {
         return coverageFilePath;
