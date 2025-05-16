@@ -322,16 +322,23 @@ describe('PublishCodeCovCoverage', () => {
       'Command failed'
     );
   });
-
-  test('handles unhandled errors at the top level', async () => {
+  test('handles unhandled errors at the top level and clears token if set by task', async () => {
     // Create a spy on console.error
     const consoleSpy = jest.spyOn(console, 'error');
+
+    // Set up a token and the tokenWasSetByTask flag
+    // We need to access the internal variable to simulate it being set
+    process.env.CODECOV_TOKEN = 'test-token-for-unhandled-error';
+    const taskModule = require('../index');
+    if (typeof taskModule.setTokenWasSetByTaskForTest === 'function') {
+      taskModule.setTokenWasSetByTaskForTest(true);
+    }
 
     // Create a fake error
     const fakeError = new Error("Test unhandled error");
 
     // Directly call the catch handler at the bottom of the file
-    const runCatchHandler = require('../index').__runCatchHandlerForTest;
+    const runCatchHandler = taskModule.__runCatchHandlerForTest;
     if (runCatchHandler) {
       runCatchHandler(fakeError);
 
@@ -341,6 +348,9 @@ describe('PublishCodeCovCoverage', () => {
         tl.TaskResult.Failed,
         'Unhandled error: Test unhandled error'
       );
+
+      // Verify token was cleared
+      expect(process.env.CODECOV_TOKEN).toBeUndefined();
     } else {
       // If the handler isn't available, mark the test as passed
       console.log('Skipping unhandled error test as handler is not exposed');
@@ -547,7 +557,6 @@ describe('PublishCodeCovCoverage', () => {
     expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "/original/working/directory/testResults"`);
     expect(execSyncCalls[uploadCallIndex][0]).toContain(`--network-root-folder "/original/working/directory/${networkRootFolder}"`);
   });
-
   test('should set CODECOV_TOKEN from task input if provided', async () => {
     const tokenValue = 'mock-token-from-input';
 
@@ -571,8 +580,9 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Verify token was set in environment variable
-    expect(process.env.CODECOV_TOKEN).toBe(tokenValue);
+    // The token should be undefined after running (it's set during the run but cleared at the end)
+    // since we set it in the task
+    expect(process.env.CODECOV_TOKEN).toBeUndefined();
 
     // Verify the token is NOT passed on command line with -t parameter
     const execSyncCalls = (execSync as jest.Mock).mock.calls;
@@ -582,7 +592,6 @@ describe('PublishCodeCovCoverage', () => {
     expect(uploadCallIndex).toBeGreaterThan(-1);
     expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
   });
-
   test('should set CODECOV_TOKEN from pipeline variable if input not provided', async () => {
     const tokenValue = 'mock-token-from-pipeline';
 
@@ -606,8 +615,9 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Verify token was set in environment variable
-    expect(process.env.CODECOV_TOKEN).toBe(tokenValue);
+    // The token should be undefined after running (it's set during the run but cleared at the end)
+    // since we set it in the task
+    expect(process.env.CODECOV_TOKEN).toBeUndefined();
 
     // Verify the token is NOT passed on command line with -t parameter
     const execSyncCalls = (execSync as jest.Mock).mock.calls;
@@ -616,5 +626,87 @@ describe('PublishCodeCovCoverage', () => {
     );
     expect(uploadCallIndex).toBeGreaterThan(-1);
     expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
+  });
+
+  test('should clear CODECOV_TOKEN only if it was set by the task', async () => {
+    // We'll need to access our module's tokenWasSetByTask variable
+    const taskModule = require('../index');
+
+    // First case: Task doesn't change the token value
+    // Setup an existing token in the environment
+    const initialToken = 'initial-token';
+    process.env.CODECOV_TOKEN = initialToken;
+
+    // Mock codecovToken input to return the same value as current environment
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'codecovToken') return initialToken; // Same as existing token
+      if (name === 'testResultFolderName') return 'testResults';
+      return '';
+    });
+
+    // Mock CODECOV_TOKEN pipeline variable not provided
+    (tl.getVariable as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'Agent.TempDirectory') return '/tmp';
+      return undefined;
+    });
+
+    // Reset the tokenWasSetByTask flag from previous tests
+    if (typeof taskModule.setTokenWasSetByTaskForTest === 'function') {
+      taskModule.setTokenWasSetByTaskForTest(false);
+    }
+
+    await run();
+
+    // Token should still exist since we didn't change it (tokenWasSetByTask should be false)
+    expect(process.env.CODECOV_TOKEN).toBe(initialToken);
+
+    // Second case: Task sets a different token value
+    // Reset and setup for new test case
+    jest.clearAllMocks();
+    process.env.CODECOV_TOKEN = initialToken;
+
+    // Mock codecovToken input provided with a new value (different from existing)
+    const newToken = 'new-token';
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'codecovToken') return newToken; // Different from existing token
+      if (name === 'testResultFolderName') return 'testResults';
+      return '';
+    });
+
+    await run();
+
+    // Since we set a different token in the task, it should be cleared on completion
+    expect(process.env.CODECOV_TOKEN).toBeUndefined();
+  });
+
+  test('should clear CODECOV_TOKEN on error if it was set by the task', async () => {
+    // Setup: Start with no token in environment
+    process.env.CODECOV_TOKEN = undefined;
+
+    // Mock codecovToken input provided
+    const tokenValue = 'error-test-token';
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'codecovToken') return tokenValue;
+      if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return 'non-existent-file.xml';
+      return '';
+    });
+
+    // Force an error by making the file check fail
+    (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
+      if (path.includes('non-existent-file.xml')) return false;
+      return true;
+    });
+
+    await run();
+
+    // Verify token was cleared even though there was an error
+    expect(process.env.CODECOV_TOKEN).toBeUndefined();
+
+    // Verify error was properly reported
+    expect(tl.setResult).toHaveBeenCalledWith(
+      tl.TaskResult.Failed,
+      expect.stringContaining('Specified coverage file not found')
+    );
   });
 });

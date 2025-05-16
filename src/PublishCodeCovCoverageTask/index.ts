@@ -4,6 +4,17 @@ import * as fs from 'fs';
 import * as https from 'https';
 import { execSync } from 'child_process';
 
+// Variable to track if we set the CODECOV_TOKEN
+let tokenWasSetByTask = false;
+
+// Function to clear sensitive environment variables that were set by this task
+function clearSensitiveEnvironmentVariables(): void {
+    if (tokenWasSetByTask && process.env.CODECOV_TOKEN) {
+        console.log('Clearing CODECOV_TOKEN environment variable for security');
+        delete process.env.CODECOV_TOKEN;
+    }
+}
+
 export async function run(): Promise<void> {
     try {
         // Set resource path for localization
@@ -17,7 +28,6 @@ export async function run(): Promise<void> {
         const coverageFileName = tl.getInput('coverageFileName', false) || '';
         const networkRootFolder = tl.getInput('networkRootFolder', false) || '';
         const verbose = tl.getBoolInput('verbose', false) || false;
-
         // Get token from task input or pipeline variable
         const codecovTokenInput = tl.getInput('codecovToken', false);
         const codecovToken = codecovTokenInput || tl.getVariable('CODECOV_TOKEN');
@@ -27,9 +37,11 @@ export async function run(): Promise<void> {
 
             if (!existingToken) {
                 process.env.CODECOV_TOKEN = codecovToken;
+                tokenWasSetByTask = true;
                 console.log('Environment variable CODECOV_TOKEN has been set');
             } else if (existingToken !== codecovToken) {
                 process.env.CODECOV_TOKEN = codecovToken;
+                tokenWasSetByTask = true;
                 console.log('Environment variable CODECOV_TOKEN has been overridden with new value');
             } else {
                 console.log('Environment variable CODECOV_TOKEN already has the correct value, not changing');
@@ -152,12 +164,19 @@ export async function run(): Promise<void> {
 
         console.log('Upload completed successfully');
 
+        // Clear sensitive environment variables before exiting
+        clearSensitiveEnvironmentVariables();
+
         tl.setResult(tl.TaskResult.Succeeded, 'Code coverage uploaded successfully');
 
     } catch (err: any) {
         console.error(`Error: ${err.message}`);
         if (err.stdout) console.log(`stdout: ${err.stdout}`);
         if (err.stderr) console.error(`stderr: ${err.stderr}`);
+
+        // Clear sensitive environment variables even on error
+        clearSensitiveEnvironmentVariables();
+
         tl.setResult(tl.TaskResult.Failed, err.message);
     }
 }
@@ -193,14 +212,19 @@ export async function downloadFile(url: string, dest: string): Promise<void> {
 // Define the error handler for unhandled rejections
 function handleUnhandledError(err: Error): void {
     console.error('Unhandled error:', err);
+    // Clear sensitive environment variables on unhandled errors
+    clearSensitiveEnvironmentVariables();
     tl.setResult(tl.TaskResult.Failed, `Unhandled error: ${err.message}`);
 }
 
 // Execute the task
 run().catch(handleUnhandledError);
 
-// Expose the handler for testing purposes
+// Expose the handler and variables for testing purposes
 // This conditional prevents it from affecting the actual behavior
 if (process.env.NODE_ENV === 'test') {
     module.exports.__runCatchHandlerForTest = handleUnhandledError;
+    module.exports.setTokenWasSetByTaskForTest = (value: boolean): void => {
+        tokenWasSetByTask = value;
+    };
 }
