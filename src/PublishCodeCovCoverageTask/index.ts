@@ -45,6 +45,10 @@ export async function run(): Promise<void> {
             throw new Error('CODECOV_TOKEN environment variable is not set');
         }
 
+        // Save the original working directory to resolve relative paths later
+        const originalWorkingDir = process.cwd();
+        console.log(`Original working directory: ${originalWorkingDir}`);
+
         // URLs for the Codecov CLI
         const cliUrl = 'https://cli.codecov.io/latest/linux/codecov';
         const sha256sumUrl = 'https://cli.codecov.io/latest/linux/codecov.SHA256SUM';
@@ -81,20 +85,32 @@ export async function run(): Promise<void> {
 
         // Check if coverage file exists
         let actualCoverageFilePath = '';
+        let resolvedTestResultFolderPath = '';
 
         if (coverageFileName) {
             // If testResultFolderName is provided, join it with coverageFileName
             // Otherwise, treat coverageFileName as a full path
             if (testResultFolderName) {
-                actualCoverageFilePath = path.join(testResultFolderName, coverageFileName);
+                // Resolve paths relative to the original working directory
+                resolvedTestResultFolderPath = path.resolve(originalWorkingDir, testResultFolderName);
+                actualCoverageFilePath = path.join(resolvedTestResultFolderPath, coverageFileName);
             } else {
-                actualCoverageFilePath = coverageFileName;
+                // Resolve path relative to the original working directory
+                actualCoverageFilePath = path.resolve(originalWorkingDir, coverageFileName);
             }
 
             if (!fs.existsSync(actualCoverageFilePath)) {
                 throw new Error(`Specified coverage file not found at ${actualCoverageFilePath}`);
             }
+        } else if (testResultFolderName) {
+            // Resolve test result folder path relative to the original working directory
+            resolvedTestResultFolderPath = path.resolve(originalWorkingDir, testResultFolderName);
+
+            if (!fs.existsSync(resolvedTestResultFolderPath)) {
+                throw new Error(`Specified test result folder not found at ${resolvedTestResultFolderPath}`);
+            }
         }
+
         const verboseFlag = verbose ? ' --verbose' : '';
         let uploadCommand = `./codecov${verboseFlag} upload-process`;
 
@@ -105,8 +121,8 @@ export async function run(): Promise<void> {
         }
         // Otherwise use -s with the testResultFolderName directory if it's specified
         else if (testResultFolderName) {
-            console.log(`Uploading from directory: ${testResultFolderName}`);
-            uploadCommand += ` -s "${testResultFolderName}"`;
+            console.log(`Uploading from directory: ${resolvedTestResultFolderPath}`);
+            uploadCommand += ` -s "${resolvedTestResultFolderPath}"`;
         }
         else {
             throw new Error('Either coverageFileName or testResultFolderName must be specified');
@@ -114,8 +130,13 @@ export async function run(): Promise<void> {
 
         // Add network root folder if specified
         if (networkRootFolder) {
-            console.log(`Adding network root folder: ${networkRootFolder}`);
-            uploadCommand += ` --network-root-folder "${networkRootFolder}"`;
+            // Resolve network root folder path relative to the original working directory if it's a relative path
+            const resolvedNetworkRootFolder = path.isAbsolute(networkRootFolder)
+                ? networkRootFolder
+                : path.resolve(originalWorkingDir, networkRootFolder);
+
+            console.log(`Adding network root folder: ${resolvedNetworkRootFolder}`);
+            uploadCommand += ` --network-root-folder "${resolvedNetworkRootFolder}"`;
         }
 
         // Log the command with redacted token
