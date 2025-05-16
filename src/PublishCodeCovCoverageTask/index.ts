@@ -176,8 +176,8 @@ export async function run(): Promise<void> {
             args.push('--network-root-folder', resolvedNetworkRootFolder);
         }
 
-        // Log the command and arguments
-        console.log(`Executing command: ./codecov ${args.join(' ')}`);
+        // Log the command and arguments with proper quoting for readability
+        console.log(`Executing command: ./codecov ${args.map(arg => `"${arg}"`).join(' ')}`);
         execFileSync('./codecov', args, {
             stdio: 'inherit'
         });
