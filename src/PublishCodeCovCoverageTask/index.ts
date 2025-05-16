@@ -11,7 +11,7 @@ let tokenWasSetByTask = false;
 function clearSensitiveEnvironmentVariables(): void {
     if (tokenWasSetByTask && process.env.CODECOV_TOKEN) {
         console.log('Clearing CODECOV_TOKEN environment variable for security');
-        delete process.env.CODECOV_TOKEN;
+        process.env.CODECOV_TOKEN = undefined;
     }
 }
 
