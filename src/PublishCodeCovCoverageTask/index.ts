@@ -139,13 +139,17 @@ export async function run(): Promise<void> {
             if (!fs.existsSync(resolvedTestResultFolderPath)) {
                 throw new Error(`Specified test result folder not found at ${resolvedTestResultFolderPath}`);
             }
-        }        // Build an array of arguments for execFileSync
-        const args: string[] = ['upload-process'];
+        }
+          // Build an array of arguments for execFileSync
+        const args: string[] = [];
 
-        // Add verbose flag if needed
+        // Add verbose flag if needed (must come before the command)
         if (verbose) {
             args.push('--verbose');
         }
+
+        // Add the command after any global options
+        args.push('upload-process');
 
         // If coverageFileName was provided, use -f with the file path
         if (coverageFileName) {
