@@ -6,10 +6,13 @@ import { execSync, execFileSync } from 'child_process';
 
 // Mock dependencies
 jest.mock('azure-pipelines-task-lib/task');
-jest.mock('path');
 jest.mock('child_process');
 jest.mock('https');
 jest.mock('fs');
+jest.mock('path');
+
+// Create reference to actual path implementation - must be after the mock declarations
+const actualPath = jest.requireActual('path');
 
 // Import functions after mocking dependencies
 import { run, downloadFile } from '../index';
@@ -73,10 +76,17 @@ describe('PublishCodeCovCoverage', () => {
       return undefined as any;
     });
 
-    // Mock path
-    (path.join as jest.Mock).mockImplementation((...args: string[]) => args.join('/'));
-    (path.resolve as jest.Mock).mockImplementation((...args: string[]) => args.join('/'));
-    (path.isAbsolute as jest.Mock).mockImplementation((thePath: string) => thePath.startsWith('/'));
+    // Set up path mocks that use the actual Node.js path module implementation
+    // This ensures we handle edge cases correctly while still allowing test control
+    (path.join as jest.Mock).mockImplementation((...args: string[]) => {
+      return actualPath.join(...args);
+    });
+    (path.resolve as jest.Mock).mockImplementation((...args: string[]) => {
+      return actualPath.resolve(...args);
+    });
+    (path.isAbsolute as jest.Mock).mockImplementation((thePath: string) => {
+      return actualPath.isAbsolute(thePath);
+    });
 
     // Mock execSync and execFileSync
     (execSync as jest.Mock).mockReturnValue('');
