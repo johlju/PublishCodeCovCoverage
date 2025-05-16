@@ -23,13 +23,14 @@ The task requires the following input parameters:
 | testResultFolderName | The path to the test result folder containing the code coverage report | Yes |
 | coverageFileName | The name of the coverage file (e.g., 'coverage.xml'). If specified, argument -f will be used with this file. If not specified, argument -s will be used with the test result folder path. | No |
 | networkRootFolder | Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified. | No |
+| codecovToken | The token for uploading coverage to Codecov.io. If not provided, it will look for the CODECOV_TOKEN environment variable or pipeline variable. | No |
 | verbose | Enable verbose output for the Codecov uploader | No |
 
-The task also requires the following environment variables:
+The task can use the following environment variables or pipeline variables:
 
 | Variable | Description | Required |
 |-----------|-------------|----------|
-| CODECOV_TOKEN | Your Codecov.io API token | Yes |
+| CODECOV_TOKEN | Your Codecov.io API token (required if not specified as input parameter) | Conditional |
 
 ## Examples
 
@@ -100,6 +101,19 @@ steps:
   env:
     CODECOV_TOKEN: $(CODECOV_TOKEN)
 ```
+
+### Example 6: Using codecovToken input parameter instead of environment variable
+
+```yaml
+steps:
+- task: PublishCodeCovCoverage@1
+  displayName: 'Upload coverage to Codecov.io with token input'
+  inputs:
+    testResultFolderName: '$(Build.SourcesDirectory)/coverage'
+    codecovToken: $(CODECOV_TOKEN)
+```
+
+In this example, the Codecov token is passed directly as an input parameter instead of as an environment variable. This provides an alternative way to supply the token when needed.
 
 ## How it works
 

@@ -28,9 +28,22 @@ export async function run(): Promise<void> {
         const coverageFileName = tl.getInput('coverageFileName', false) || '';
         const networkRootFolder = tl.getInput('networkRootFolder', false) || '';
         const verbose = tl.getBoolInput('verbose', false) || false;
-        // Get token from task input or pipeline variable
-        const codecovTokenInput = tl.getInput('codecovToken', false);
-        const codecovToken = codecovTokenInput || tl.getVariable('CODECOV_TOKEN');
+          // Get token from task input or pipeline variable
+        const codecovTokenInput = tl.getInput('codecovToken', false) || '';
+        const codecovTokenFromVariable = tl.getVariable('CODECOV_TOKEN');
+          // Check if input token is empty or just whitespace, if so fallback to pipeline variable
+        const trimmedTokenInput = codecovTokenInput.trim();
+        const codecovToken = trimmedTokenInput !== '' ? trimmedTokenInput : codecovTokenFromVariable;
+        
+        // Log token source for debugging
+        if (trimmedTokenInput !== '') {
+            console.log('Using Codecov token from task input parameter');
+        } else if (codecovTokenFromVariable) {
+            console.log('Using Codecov token from pipeline variable');
+        } else if (process.env.CODECOV_TOKEN) {
+            console.log('Using Codecov token from pre-existing environment variable');
+        }
+
         // If value provided as input or pipeline variable, override process.env.CODECOV_TOKEN
         if (codecovToken) {
             const existingToken = process.env.CODECOV_TOKEN;

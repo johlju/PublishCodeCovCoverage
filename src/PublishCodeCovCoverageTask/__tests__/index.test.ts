@@ -253,7 +253,7 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();    // Get all exec calls for verification
     const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    
+
     // Verify that upload command uses -s parameter with test result folder's resolved absolute path
     const uploadCallIndex = execSyncCalls.findIndex(
       ([cmd]: [string]) => cmd.includes('upload-process')
@@ -536,10 +536,11 @@ describe('PublishCodeCovCoverage', () => {
     expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "/original/working/directory/testResults"`);
     expect(execSyncCalls[uploadCallIndex][0]).toContain(`--network-root-folder "/original/working/directory/${networkRootFolder}"`);
   });
+
   test('should set CODECOV_TOKEN from task input if provided', async () => {
     const tokenValue = 'mock-token-from-input';
 
-    // Mock codecovToken input provided
+    // Mock codecovToken input provided with non-empty value
     (tl.getInput as jest.Mock).mockImplementation((name: string) => {
       if (name === 'codecovToken') return tokenValue;
       if (name === 'testResultFolderName') return 'testResults';
@@ -571,12 +572,49 @@ describe('PublishCodeCovCoverage', () => {
     expect(uploadCallIndex).toBeGreaterThan(-1);
     expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
   });
+
   test('should set CODECOV_TOKEN from pipeline variable if input not provided', async () => {
     const tokenValue = 'mock-token-from-pipeline';
 
-    // Mock codecovToken input not provided
+    // Mock codecovToken input not provided (empty string)
     (tl.getInput as jest.Mock).mockImplementation((name: string) => {
       if (name === 'codecovToken') return '';
+      if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return '';
+      return '';
+    });
+
+    // Mock CODECOV_TOKEN pipeline variable
+    (tl.getVariable as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'CODECOV_TOKEN') return tokenValue;
+      if (name === 'Agent.TempDirectory') return '/tmp';
+      return undefined;
+    });
+
+    // Clear environment variable to ensure it gets set by the task
+    process.env.CODECOV_TOKEN = undefined;
+
+    await run();
+
+    // The token should be undefined after running (it's set during the run but cleared at the end)
+    // since we set it in the task
+    expect(process.env.CODECOV_TOKEN).toBeUndefined();
+
+    // Verify the token is NOT passed on command line with -t parameter
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );
+    expect(uploadCallIndex).toBeGreaterThan(-1);
+    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
+  });
+
+  test('should treat blank codecovToken input as empty and fall back to pipeline variable', async () => {
+    const tokenValue = 'mock-token-from-pipeline';
+
+    // Mock codecovToken input provided as a blank string
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'codecovToken') return '   '; // Blank string with spaces
       if (name === 'testResultFolderName') return 'testResults';
       if (name === 'coverageFileName') return '';
       return '';

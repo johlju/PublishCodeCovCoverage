@@ -52,7 +52,7 @@ Before using this extension, ensure you have the following:
 To use the custom Azure Pipeline extension, follow these steps:
 
 1. Add the extension to your Azure Pipeline YAML file.
-2. Set the necessary environment variables `CODECOV_TOKEN`.
+2. Provide the Codecov token either as an environment variable `CODECOV_TOKEN` or as an input parameter `codecovToken`.
 3. Configure the task with the proper build and test result folder paths.
 
 Here is an example of an Azure Pipeline YAML configuration:
@@ -75,13 +75,23 @@ jobs:
 
   # Run your build and tests here
   # ...
+
+  # Method 1: Using environment variables (traditional approach)
   - task: PublishCodeCovCoverage@1
-    displayName: 'Upload code coverage to Codecov.io'
+    displayName: 'Upload code coverage with env variable'
     inputs:
       buildFolderName: '$(Build.BinariesDirectory)'
       testResultFolderName: '$(Build.TestResultsDirectory)'
     env:
       CODECOV_TOKEN: $(CODECOV_TOKEN)
+
+  # Method 2: Using input parameter (new approach)
+  - task: PublishCodeCovCoverage@1
+    displayName: 'Upload code coverage with input parameter'
+    inputs:
+      buildFolderName: '$(Build.BinariesDirectory)'
+      testResultFolderName: '$(Build.TestResultsDirectory)'
+      codecovToken: $(CODECOV_TOKEN)
 ```
 
 For detailed usage instructions, please see the [usage documentation](docs/usage.md).
