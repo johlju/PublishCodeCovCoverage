@@ -18,8 +18,17 @@ export async function run(): Promise<void> {
         const networkRootFolder = tl.getInput('networkRootFolder', false) || '';
         const verbose = tl.getBoolInput('verbose', false) || false;
 
-        // Get environment variables
-        const codecovToken = tl.getVariable('CODECOV_TOKEN') || process.env.CODECOV_TOKEN;
+        // Get token from task input or pipeline variable
+        const codecovTokenInput = tl.getInput('codecovToken', false);
+        const codecovToken = codecovTokenInput || tl.getVariable('CODECOV_TOKEN');
+
+        // If value provided as input or pipeline variable, override process.env.CODECOV_TOKEN
+        if (codecovToken) {
+            process.env.CODECOV_TOKEN = codecovToken;
+
+            console.log('Environment variable CODECOV_TOKEN set from task input');
+        }
+
         console.log('Uploading code coverage to Codecov.io');
         console.log(`Test result folder: ${testResultFolderName || 'not specified'}`);
         if (coverageFileName) {
@@ -109,11 +118,8 @@ export async function run(): Promise<void> {
             uploadCommand += ` --network-root-folder "${networkRootFolder}"`;
         }
 
-        // Add the token to the command
-        uploadCommand += ` -t "${codecovToken}"`;
-
         // Log the command with redacted token
-        console.log(`Executing command: ${uploadCommand.replace(codecovToken, '***redacted***')}`);
+        console.log(`Executing command: ${uploadCommand}`);
         execSync(uploadCommand, {
             stdio: 'inherit'
         });

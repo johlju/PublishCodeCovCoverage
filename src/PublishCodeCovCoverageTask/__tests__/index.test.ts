@@ -23,10 +23,13 @@ describe('PublishCodeCovCoverage', () => {
 
     // Suppress console output
     jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});    // Mock task lib
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Mock task lib
     (tl.getInput as jest.Mock).mockImplementation((name: string) => {
       if (name === 'testResultFolderName') return 'testResults';
       if (name === 'coverageFileName') return '';
+      if (name === 'codecovToken') return '';
       return '';
     });
 
@@ -365,6 +368,15 @@ describe('PublishCodeCovCoverage', () => {
       expect.stringMatching(/\.\/codecov --verbose upload-process/),
       expect.anything()
     );
+
+    // Verify the token is NOT passed on command line with -t parameter
+    // If we would pass -t, any local user can read /proc/<pid>/cmdline.
+    // Codecov’s CLI picks CODECOV_TOKEN from the environment
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );
+    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
   });
 
   test('should correctly handle verbose mode disabled', async () => {
@@ -512,5 +524,75 @@ describe('PublishCodeCovCoverage', () => {
     expect(uploadCallIndex).toBeGreaterThan(-1);
     expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "testResults"`);
     expect(execSyncCalls[uploadCallIndex][0]).toContain(`--network-root-folder "src"`);
+  });
+
+  test('should set CODECOV_TOKEN from task input if provided', async () => {
+    const tokenValue = 'mock-token-from-input';
+
+    // Mock codecovToken input provided
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'codecovToken') return tokenValue;
+      if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return '';
+      return '';
+    });
+
+    // Mock CODECOV_TOKEN pipeline variable as undefined
+    (tl.getVariable as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'CODECOV_TOKEN') return undefined;
+      if (name === 'Agent.TempDirectory') return '/tmp';
+      return undefined;
+    });
+
+    // Clear environment variable to ensure it gets set by the task
+    delete process.env.CODECOV_TOKEN;
+
+    await run();
+
+    // Verify token was set in environment variable
+    expect(process.env.CODECOV_TOKEN).toBe(tokenValue);
+
+    // Verify the token is NOT passed on command line with -t parameter
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );
+    expect(uploadCallIndex).toBeGreaterThan(-1);
+    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
+  });
+
+  test('should set CODECOV_TOKEN from pipeline variable if input not provided', async () => {
+    const tokenValue = 'mock-token-from-pipeline';
+
+    // Mock codecovToken input not provided
+    (tl.getInput as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'codecovToken') return '';
+      if (name === 'testResultFolderName') return 'testResults';
+      if (name === 'coverageFileName') return '';
+      return '';
+    });
+
+    // Mock CODECOV_TOKEN pipeline variable
+    (tl.getVariable as jest.Mock).mockImplementation((name: string) => {
+      if (name === 'CODECOV_TOKEN') return tokenValue;
+      if (name === 'Agent.TempDirectory') return '/tmp';
+      return undefined;
+    });
+
+    // Clear environment variable to ensure it gets set by the task
+    delete process.env.CODECOV_TOKEN;
+
+    await run();
+
+    // Verify token was set in environment variable
+    expect(process.env.CODECOV_TOKEN).toBe(tokenValue);
+
+    // Verify the token is NOT passed on command line with -t parameter
+    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execSyncCalls.findIndex(
+      ([cmd]: [string]) => cmd.includes('upload-process')
+    );
+    expect(uploadCallIndex).toBeGreaterThan(-1);
+    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
   });
 });
