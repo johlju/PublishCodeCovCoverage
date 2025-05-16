@@ -2,11 +2,11 @@ import * as tl from 'azure-pipelines-task-lib/task';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
-import { execSync, execFileSync } from 'child_process';
+import { execFileSync } from 'node:child_process';
 
 // Mock dependencies
 jest.mock('azure-pipelines-task-lib/task');
-jest.mock('child_process');
+jest.mock('node:child_process');
 jest.mock('https');
 jest.mock('fs');
 jest.mock('path');
@@ -88,8 +88,7 @@ describe('PublishCodeCovCoverage', () => {
       return actualPath.isAbsolute(thePath);
     });
 
-    // Mock execSync and execFileSync
-    (execSync as jest.Mock).mockReturnValue('');
+    // Mock execFileSync
     (execFileSync as jest.Mock).mockReturnValue('');
 
     // Mock process
@@ -318,10 +317,7 @@ describe('PublishCodeCovCoverage', () => {
     (mockError as any).stdout = 'Some stdout output';
     (mockError as any).stderr = 'Some stderr output';
 
-    // Mock both execSync and execFileSync to throw the error
-    (execSync as jest.Mock).mockImplementation(() => {
-      throw mockError;
-    });
+    // Mock execFileSync to throw the error
     (execFileSync as jest.Mock).mockImplementation(() => {
       throw mockError;
     });

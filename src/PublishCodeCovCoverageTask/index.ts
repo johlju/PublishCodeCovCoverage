@@ -2,7 +2,7 @@ import * as tl from 'azure-pipelines-task-lib/task';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
-import { execSync, execFileSync } from 'child_process';
+import { execFileSync } from 'node:child_process';
 
 // Variable to track if we set the CODECOV_TOKEN
 let tokenWasSetByTask = false;
