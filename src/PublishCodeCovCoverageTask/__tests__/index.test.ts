@@ -128,7 +128,7 @@ describe('PublishCodeCovCoverage', () => {
 
     expect(tl.setResult).toHaveBeenCalledWith(
       tl.TaskResult.Failed,
-      'CODECOV_TOKEN environment variable is not set'
+      'CODECOV_TOKEN environment variable is not set or passed as input or pipeline variable'
     );
   });
 
