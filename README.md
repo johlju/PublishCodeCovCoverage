@@ -9,7 +9,7 @@ Before using this extension, ensure you have the following:
 - An Azure DevOps account
 - A Codecov.io account
 - A Codecov token (CODECOV_TOKEN)
-- Linux agent
+- Azure DevOps agent running Linux (Ubuntu/Debian recommended); Windows and macOS agents are not currently supported as the task uses Linux-specific CLI tools
 - Node.js 20 or later
 
 ## Installation
@@ -80,7 +80,6 @@ jobs:
   - task: PublishCodeCovCoverage@1
     displayName: 'Upload code coverage with env variable'
     inputs:
-      buildFolderName: '$(Build.BinariesDirectory)'
       testResultFolderName: '$(Build.TestResultsDirectory)'
     env:
       CODECOV_TOKEN: $(CODECOV_TOKEN)
@@ -89,7 +88,6 @@ jobs:
   - task: PublishCodeCovCoverage@1
     displayName: 'Upload code coverage with input parameter'
     inputs:
-      buildFolderName: '$(Build.BinariesDirectory)'
       testResultFolderName: '$(Build.TestResultsDirectory)'
       codecovToken: $(CODECOV_TOKEN)
 ```
