@@ -119,7 +119,7 @@ describe('PublishCodeCovCoverage', () => {
   test('run function should handle missing token', async () => {
     // Mock CODECOV_TOKEN as undefined
     (tl.getVariable as jest.Mock).mockReturnValueOnce(undefined);
-    delete process.env.CODECOV_TOKEN;
+    process.env.CODECOV_TOKEN = undefined;
 
     await run();
 
@@ -545,7 +545,7 @@ describe('PublishCodeCovCoverage', () => {
     });
 
     // Clear environment variable to ensure it gets set by the task
-    delete process.env.CODECOV_TOKEN;
+    process.env.CODECOV_TOKEN = undefined;
 
     await run();
 
@@ -580,7 +580,7 @@ describe('PublishCodeCovCoverage', () => {
     });
 
     // Clear environment variable to ensure it gets set by the task
-    delete process.env.CODECOV_TOKEN;
+    process.env.CODECOV_TOKEN = undefined;
 
     await run();
 
