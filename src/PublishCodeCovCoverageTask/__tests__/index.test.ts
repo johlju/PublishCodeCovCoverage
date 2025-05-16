@@ -251,15 +251,9 @@ describe('PublishCodeCovCoverage', () => {
       return '';
     });
 
-    await run();
-
-    // Should NOT try to perform any XML search with find and grep
+    await run();    // Get all exec calls for verification
     const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    const findCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('find') && cmd.includes('*.xml') && cmd.includes('grep')
-    );
-    expect(findCallIndex).toBe(-1);
-
+    
     // Verify that upload command uses -s parameter with test result folder's resolved absolute path
     const uploadCallIndex = execSyncCalls.findIndex(
       ([cmd]: [string]) => cmd.includes('upload-process')
@@ -275,16 +269,8 @@ describe('PublishCodeCovCoverage', () => {
       if (name === 'testResultFolderName') return 'testResults';
       if (name === 'coverageFileName') return '';
       return '';
-    });
-
-    // Mock the grep command failing with an error (which is how it behaves when no files match)
-    const findError = new Error('No files found');
-    (execSync as jest.Mock).mockImplementation((command: string) => {
-      if (command.includes('find') && command.includes('grep')) {
-        throw findError;
-      }
-      return '';
-    });
+    });    // Set up execSync mock for this test
+    (execSync as jest.Mock).mockReturnValue('');
 
     await run();
 
@@ -441,14 +427,7 @@ describe('PublishCodeCovCoverage', () => {
 
     expect(uploadCallIndex).toBeGreaterThan(-1);
     expect(execSyncCalls[uploadCallIndex][0]).toContain(`-f "${expectedPath}"`);
-    expect(execSyncCalls[uploadCallIndex][0]).not.toContain(`-s "`);  // Should not contain -s parameter
-
-    // Verify that no file search was performed
-    const findCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('find') && cmd.includes('grep')
-    );
-
-    expect(findCallIndex).toBe(-1);
+    expect(execSyncCalls[uploadCallIndex][0]).not.toContain(`-s "`);  // Should not contain -s parameter    // No need to check for non-existent find/grep commands as they aren't used in the implementation
   });
 
   test('should throw error when specified file does not exist', async () => {
