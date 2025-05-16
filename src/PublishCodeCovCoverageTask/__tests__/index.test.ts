@@ -14,7 +14,13 @@ jest.mock('fs');
 import { run, downloadFile } from '../index';
 
 describe('PublishCodeCovCoverage', () => {
+  // Store original env to restore it after each test
+  let originalEnv: NodeJS.ProcessEnv;
+  
   beforeEach(() => {
+    // Store original environment
+    originalEnv = { ...process.env };
+    
     jest.clearAllMocks();
 
     // Set NODE_ENV for testing the unhandled error handler
@@ -81,7 +87,7 @@ describe('PublishCodeCovCoverage', () => {
     // Mock process
     jest.spyOn(process, 'chdir').mockImplementation(() => { });
     jest.spyOn(process, 'cwd').mockReturnValue('/original/working/directory');
-    process.env = { CODECOV_TOKEN: 'mock-token' };
+    process.env.CODECOV_TOKEN = 'mock-token';
 
     // Mock https.get
     const mockResponse = {
@@ -110,6 +116,9 @@ describe('PublishCodeCovCoverage', () => {
   afterEach(() => {
     // Restore console mocks to prevent side effects between tests
     jest.restoreAllMocks();
+    
+    // Restore original environment
+    process.env = originalEnv;
   });
 
   test('run function should complete successfully', async () => {
