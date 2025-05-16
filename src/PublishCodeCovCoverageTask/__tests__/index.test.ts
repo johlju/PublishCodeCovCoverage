@@ -2,7 +2,7 @@ import * as tl from 'azure-pipelines-task-lib/task';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 
 // Mock dependencies
 jest.mock('azure-pipelines-task-lib/task');
@@ -78,8 +78,9 @@ describe('PublishCodeCovCoverage', () => {
     (path.resolve as jest.Mock).mockImplementation((...args: string[]) => args.join('/'));
     (path.isAbsolute as jest.Mock).mockImplementation((thePath: string) => thePath.startsWith('/'));
 
-    // Mock execSync
+    // Mock execSync and execFileSync
     (execSync as jest.Mock).mockReturnValue('');
+    (execFileSync as jest.Mock).mockReturnValue('');
 
     // Mock process
     jest.spyOn(process, 'chdir').mockImplementation(() => { });
@@ -251,16 +252,22 @@ describe('PublishCodeCovCoverage', () => {
       return '';
     });
 
-    await run();    // Get all exec calls for verification
-    const execSyncCalls = (execSync as jest.Mock).mock.calls;
+    await run();
 
-    // Verify that upload command uses -s parameter with test result folder's resolved absolute path
-    const uploadCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('upload-process')
+    // Get all exec calls for verification
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+
+    // Verify that execFileSync was called with the correct executable and arguments
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
     expect(uploadCallIndex).toBeGreaterThan(-1);
-    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "/original/working/directory/${testResultFolder}"`);
-    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-f ');
+
+    // Verify the arguments array contains the -s parameter with the correct path
+    const args = execFileSyncCalls[uploadCallIndex][1];
+    expect(args).toContain('-s');
+    expect(args).toContain(`/original/working/directory/${testResultFolder}`);
+    expect(args).not.toContain('-f');
   });
 
   test('should use -s when no files found but not fail', async () => {
@@ -269,8 +276,7 @@ describe('PublishCodeCovCoverage', () => {
       if (name === 'testResultFolderName') return 'testResults';
       if (name === 'coverageFileName') return '';
       return '';
-    });    // Set up execSync mock for this test
-    (execSync as jest.Mock).mockReturnValue('');
+    });
 
     await run();
 
@@ -280,13 +286,15 @@ describe('PublishCodeCovCoverage', () => {
       'Code coverage uploaded successfully'
     );
 
-    // Verify it used the -s parameter
-    const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    const uploadCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('upload-process')
+    // Verify it used the -s parameter with execFileSync
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
 
-    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "/original/working/directory/testResults"`);
+    const args = execFileSyncCalls[uploadCallIndex][1];
+    expect(args).toContain('-s');
+    expect(args).toContain('/original/working/directory/testResults');
   });
 
   test('should handle errors with stdout and stderr', async () => {
@@ -295,8 +303,11 @@ describe('PublishCodeCovCoverage', () => {
     (mockError as any).stdout = 'Some stdout output';
     (mockError as any).stderr = 'Some stderr output';
 
-    // Mock execSync to throw the error
+    // Mock both execSync and execFileSync to throw the error
     (execSync as jest.Mock).mockImplementation(() => {
+      throw mockError;
+    });
+    (execFileSync as jest.Mock).mockImplementation(() => {
       throw mockError;
     });
 
@@ -308,6 +319,7 @@ describe('PublishCodeCovCoverage', () => {
       'Command failed'
     );
   });
+
   test('handles unhandled errors at the top level and clears token if set by task', async () => {
     // Create a spy on console.error
     const consoleSpy = jest.spyOn(console, 'error');
@@ -366,20 +378,21 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Verify that execSync was called with the --verbose flag
-    expect(execSync).toHaveBeenCalledWith(
-      expect.stringMatching(/\.\/codecov --verbose upload-process/),
+    // Verify that execFileSync was called with the --verbose flag
+    expect(execFileSync).toHaveBeenCalledWith(
+      './codecov',
+      expect.arrayContaining(['--verbose', 'upload-process']),
       expect.anything()
     );
 
     // Verify the token is NOT passed on command line with -t parameter
     // If we would pass -t, any local user can read /proc/<pid>/cmdline.
-    // Codecov’s CLI picks CODECOV_TOKEN from the environment
-    const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    const uploadCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('upload-process')
+    // Codecov's CLI picks CODECOV_TOKEN from the environment
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
-    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
+    expect(execFileSyncCalls[uploadCallIndex][1]).not.toContain('-t');
   });
 
   test('should correctly handle verbose mode disabled', async () => {
@@ -391,15 +404,14 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Verify that execSync was called without the --verbose flag
-    expect(execSync).toHaveBeenCalledWith(
-      expect.stringMatching(/\.\/codecov upload-process/),
-      expect.anything()
+    // Verify that execFileSync was called without the --verbose flag
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
-    expect(execSync).not.toHaveBeenCalledWith(
-      expect.stringMatching(/\.\/codecov --verbose/),
-      expect.anything()
-    );
+
+    expect(uploadCallIndex).toBeGreaterThan(-1);
+    expect(execFileSyncCalls[uploadCallIndex][1]).not.toContain('--verbose');
   });
 
   test('should use -f parameter with the specified coverage file path if it exists', async () => {
@@ -419,15 +431,17 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Verify that a command to upload a file was called with the expected file path
-    const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    const uploadCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('upload-process')
+    // Verify that execFileSync was called with -f and the expected file path
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
 
     expect(uploadCallIndex).toBeGreaterThan(-1);
-    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-f "${expectedPath}"`);
-    expect(execSyncCalls[uploadCallIndex][0]).not.toContain(`-s "`);  // Should not contain -s parameter    // No need to check for non-existent find/grep commands as they aren't used in the implementation
+    const args = execFileSyncCalls[uploadCallIndex][1];
+    expect(args).toContain('-f');
+    expect(args).toContain(expectedPath);
+    expect(args).not.toContain('-s');  // Should not contain -s parameter
   });
 
   test('should throw error when specified file does not exist', async () => {
@@ -480,14 +494,16 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Verify that execSync was called with the -f parameter and the resolved full path
-    const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    const uploadCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('upload-process')
+    // Verify that execFileSync was called with -f and the correct path
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
     expect(uploadCallIndex).toBeGreaterThan(-1);
-    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-f "${coverageFilePath}"`);
-    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-s ');
+    const args = execFileSyncCalls[uploadCallIndex][1];
+    expect(args).toContain('-f');
+    expect(args).toContain(coverageFilePath);
+    expect(args).not.toContain('-s');
   });
 
   test('should fail when neither testResultFolderName nor coverageFileName is specified', async () => {
@@ -519,7 +535,7 @@ describe('PublishCodeCovCoverage', () => {
 
     // Reset mocks
     jest.clearAllMocks();
-    (execSync as jest.Mock).mockReturnValue('');
+    (execFileSync as jest.Mock).mockReturnValue('');
     jest.spyOn(process, 'cwd').mockReturnValue('/original/working/directory');
 
     // Set up file system mocks
@@ -527,14 +543,18 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Verify that upload command includes the --network-root-folder parameter with resolved path
-    const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    const uploadCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('upload-process')
+    // Verify that execFileSync was called with the --network-root-folder parameter
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
+
     expect(uploadCallIndex).toBeGreaterThan(-1);
-    expect(execSyncCalls[uploadCallIndex][0]).toContain(`-s "/original/working/directory/testResults"`);
-    expect(execSyncCalls[uploadCallIndex][0]).toContain(`--network-root-folder "/original/working/directory/${networkRootFolder}"`);
+    const args = execFileSyncCalls[uploadCallIndex][1];
+    expect(args).toContain('-s');
+    expect(args).toContain('/original/working/directory/testResults');
+    expect(args).toContain('--network-root-folder');
+    expect(args).toContain(`/original/working/directory/${networkRootFolder}`);
   });
 
   test('should set CODECOV_TOKEN from task input if provided', async () => {
@@ -565,12 +585,12 @@ describe('PublishCodeCovCoverage', () => {
     expect(process.env.CODECOV_TOKEN).toBeUndefined();
 
     // Verify the token is NOT passed on command line with -t parameter
-    const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    const uploadCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('upload-process')
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
     expect(uploadCallIndex).toBeGreaterThan(-1);
-    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
+    expect(execFileSyncCalls[uploadCallIndex][1]).not.toContain('-t');
   });
 
   test('should set CODECOV_TOKEN from pipeline variable if input not provided', async () => {
@@ -601,12 +621,12 @@ describe('PublishCodeCovCoverage', () => {
     expect(process.env.CODECOV_TOKEN).toBeUndefined();
 
     // Verify the token is NOT passed on command line with -t parameter
-    const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    const uploadCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('upload-process')
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
     expect(uploadCallIndex).toBeGreaterThan(-1);
-    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
+    expect(execFileSyncCalls[uploadCallIndex][1]).not.toContain('-t');
   });
 
   test('should treat blank codecovToken input as empty and fall back to pipeline variable', async () => {
@@ -637,12 +657,12 @@ describe('PublishCodeCovCoverage', () => {
     expect(process.env.CODECOV_TOKEN).toBeUndefined();
 
     // Verify the token is NOT passed on command line with -t parameter
-    const execSyncCalls = (execSync as jest.Mock).mock.calls;
-    const uploadCallIndex = execSyncCalls.findIndex(
-      ([cmd]: [string]) => cmd.includes('upload-process')
+    const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
+    const uploadCallIndex = execFileSyncCalls.findIndex(
+      ([executable, args]: [string, string[]]) => executable === './codecov' && args.includes('upload-process')
     );
     expect(uploadCallIndex).toBeGreaterThan(-1);
-    expect(execSyncCalls[uploadCallIndex][0]).not.toContain('-t "');
+    expect(execFileSyncCalls[uploadCallIndex][1]).not.toContain('-t');
   });
 
   test('should clear CODECOV_TOKEN only if it was set by the task', async () => {
@@ -724,6 +744,32 @@ describe('PublishCodeCovCoverage', () => {
     expect(tl.setResult).toHaveBeenCalledWith(
       tl.TaskResult.Failed,
       expect.stringContaining('Specified coverage file not found')
+    );
+  });
+
+  // Additional tests for GPG and shasum verification
+  test('should call gpg and shasum with correct arguments', async () => {
+    await run();
+
+    // Verify gpg import call
+    expect(execFileSync).toHaveBeenCalledWith(
+      'gpg',
+      ['--no-default-keyring', '--import', 'pgp_keys.asc'],
+      expect.anything()
+    );
+
+    // Verify gpg verify call
+    expect(execFileSync).toHaveBeenCalledWith(
+      'gpg',
+      ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'],
+      expect.anything()
+    );
+
+    // Verify shasum call
+    expect(execFileSync).toHaveBeenCalledWith(
+      'shasum',
+      ['-a', '256', '-c', 'codecov.SHA256SUM'],
+      expect.anything()
     );
   });
 });

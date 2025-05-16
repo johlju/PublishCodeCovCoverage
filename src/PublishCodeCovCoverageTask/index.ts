@@ -2,7 +2,7 @@ import * as tl from 'azure-pipelines-task-lib/task';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 
 // Variable to track if we set the CODECOV_TOKEN
 let tokenWasSetByTask = false;
@@ -34,7 +34,7 @@ export async function run(): Promise<void> {
           // Check if input token is empty or just whitespace, if so fallback to pipeline variable
         const trimmedTokenInput = codecovTokenInput.trim();
         const codecovToken = trimmedTokenInput !== '' ? trimmedTokenInput : codecovTokenFromVariable;
-        
+
         // Log token source for debugging
         if (trimmedTokenInput !== '') {
             console.log('Using Codecov token from task input parameter');
@@ -101,7 +101,7 @@ export async function run(): Promise<void> {
         console.log('Downloading PGP keys...');
         await downloadFile(pgpKeysUrl, 'pgp_keys.asc');
         console.log('Importing PGP keys...');
-        execSync('gpg --no-default-keyring --import pgp_keys.asc', { stdio: 'inherit' });
+        execFileSync('gpg', ['--no-default-keyring', '--import', 'pgp_keys.asc'], { stdio: 'inherit' });
 
         console.log('Downloading Codecov CLI...');
         await downloadFile(cliUrl, 'codecov');
@@ -109,8 +109,8 @@ export async function run(): Promise<void> {
         await downloadFile(sha256sumSigUrl, 'codecov.SHA256SUM.sig');
 
         console.log('Verifying Codecov CLI...');
-        execSync('gpg --verify codecov.SHA256SUM.sig codecov.SHA256SUM', { stdio: 'inherit' });
-        execSync('shasum -a 256 -c codecov.SHA256SUM', { stdio: 'inherit' });
+        execFileSync('gpg', ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'], { stdio: 'inherit' });
+        execFileSync('shasum', ['-a', '256', '-c', 'codecov.SHA256SUM'], { stdio: 'inherit' });
         fs.chmodSync('codecov', '755');
 
         // Check if coverage file exists
@@ -139,20 +139,23 @@ export async function run(): Promise<void> {
             if (!fs.existsSync(resolvedTestResultFolderPath)) {
                 throw new Error(`Specified test result folder not found at ${resolvedTestResultFolderPath}`);
             }
-        }
+        }        // Build an array of arguments for execFileSync
+        const args: string[] = ['upload-process'];
 
-        const verboseFlag = verbose ? ' --verbose' : '';
-        let uploadCommand = `./codecov${verboseFlag} upload-process`;
+        // Add verbose flag if needed
+        if (verbose) {
+            args.push('--verbose');
+        }
 
         // If coverageFileName was provided, use -f with the file path
         if (coverageFileName) {
             console.log(`Uploading specific coverage file: ${actualCoverageFilePath}`);
-            uploadCommand += ` -f "${actualCoverageFilePath}"`;
+            args.push('-f', actualCoverageFilePath);
         }
         // Otherwise use -s with the testResultFolderName directory if it's specified
         else if (testResultFolderName) {
             console.log(`Uploading from directory: ${resolvedTestResultFolderPath}`);
-            uploadCommand += ` -s "${resolvedTestResultFolderPath}"`;
+            args.push('-s', resolvedTestResultFolderPath);
         }
         else {
             throw new Error('Either coverageFileName or testResultFolderName must be specified');
@@ -166,12 +169,12 @@ export async function run(): Promise<void> {
                 : path.resolve(originalWorkingDir, networkRootFolder);
 
             console.log(`Adding network root folder: ${resolvedNetworkRootFolder}`);
-            uploadCommand += ` --network-root-folder "${resolvedNetworkRootFolder}"`;
+            args.push('--network-root-folder', resolvedNetworkRootFolder);
         }
 
-        // Log the command
-        console.log(`Executing command: ${uploadCommand}`);
-        execSync(uploadCommand, {
+        // Log the command and arguments
+        console.log(`Executing command: ./codecov ${args.join(' ')}`);
+        execFileSync('./codecov', args, {
             stdio: 'inherit'
         });
 
