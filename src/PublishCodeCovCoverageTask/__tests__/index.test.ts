@@ -22,8 +22,8 @@ describe('PublishCodeCovCoverage', () => {
     process.env.NODE_ENV = 'test';
 
     // Suppress console output
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => { });
+    jest.spyOn(console, 'error').mockImplementation(() => { });
 
     // Mock task lib
     (tl.getInput as jest.Mock).mockImplementation((name: string) => {
@@ -39,8 +39,8 @@ describe('PublishCodeCovCoverage', () => {
       return undefined;
     });
 
-    (tl.setResourcePath as jest.Mock).mockImplementation(() => {});
-    (tl.setResult as jest.Mock).mockImplementation(() => {});
+    (tl.setResourcePath as jest.Mock).mockImplementation(() => { });
+    (tl.setResult as jest.Mock).mockImplementation(() => { });
 
     // Mock TaskResult enum
     (tl.TaskResult as any) = {
@@ -50,8 +50,8 @@ describe('PublishCodeCovCoverage', () => {
 
     // Mock file system
     (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.mkdirSync as jest.Mock).mockImplementation(() => {});
-    (fs.chmodSync as jest.Mock).mockImplementation(() => {});
+    (fs.mkdirSync as jest.Mock).mockImplementation(() => { });
+    (fs.chmodSync as jest.Mock).mockImplementation(() => { });
 
     // Mock file stream
     const mockStream = {
@@ -82,7 +82,7 @@ describe('PublishCodeCovCoverage', () => {
     (execSync as jest.Mock).mockReturnValue('');
 
     // Mock process
-    jest.spyOn(process, 'chdir').mockImplementation(() => {});
+    jest.spyOn(process, 'chdir').mockImplementation(() => { });
     jest.spyOn(process, 'cwd').mockReturnValue('/original/working/directory');
     process.env = { CODECOV_TOKEN: 'mock-token' };
 
