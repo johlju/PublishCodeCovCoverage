@@ -32,6 +32,8 @@ The task can use the following environment variables or pipeline variables:
 |-----------|-------------|----------|
 | CODECOV_TOKEN | Your Codecov.io API token (required if not specified as input parameter) | Conditional |
 
+> **IMPORTANT**: Always define the CODECOV_TOKEN as a secret in your pipeline to prevent accidental exposure in logs. Mark it as a "Secret" in the Azure DevOps pipeline variables UI. But marking it as secret will prevent it from working in pull requests.
+
 ## Examples
 
 ### Example 1: Using specific coverage file
