@@ -26,7 +26,7 @@ export async function run(): Promise<void> {
         if (codecovToken) {
             process.env.CODECOV_TOKEN = codecovToken;
 
-            console.log('Environment variable CODECOV_TOKEN set from task input');
+            console.log('Environment variable CODECOV_TOKEN has been set');
         }
 
         console.log('Uploading code coverage to Codecov.io');
