@@ -6,7 +6,7 @@ This Azure DevOps pipeline task uploads code coverage reports to Codecov.io.
 
 - An Azure DevOps account
 - A Codecov.io account
-- A Codecov token (CODECOV_TOKEN)
+- A Codecov token from Codecov.io
 
 ## Installation
 
@@ -26,13 +26,11 @@ The task requires the following input parameters:
 | networkRootFolder | Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified. | No |
 | verbose | Enable verbose output for the Codecov uploader | No |
 
-The task can use the following environment variables or pipeline variables:
+**Token Handling:**
 
-| Variable | Description | Required |
-|-----------|-------------|----------|
-| CODECOV_TOKEN | Your Codecov.io API token (required if not specified as input parameter) | Conditional |
+The recommended approach is to provide your Codecov token via the `codecovToken` input parameter as shown in the examples below.
 
-> **IMPORTANT**: Always define the CODECOV_TOKEN as a secret in your pipeline to prevent accidental exposure in logs. Mark it as a "Secret" in the Azure DevOps pipeline variables UI. But marking it as secret will prevent it from working in pull requests.
+> **IMPORTANT**: Always use secret variables for your Codecov token to prevent accidental exposure in logs. When using the `codecovToken` input parameter, define a secret pipeline variable and reference it like this: `codecovToken: $(MY_SECRET_TOKEN)` where `MY_SECRET_TOKEN` is marked as a "Secret" in the Azure DevOps pipeline variables UI.
 
 ## Examples
 
@@ -47,7 +45,7 @@ steps:
     coverageFileName: 'output/testResults/JaCoCo_coverage.xml'
     verbose: true
   env:
-    CODECOV_TOKEN: $(CODECOV_TOKEN)
+    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
 ```
 
 ### Example 2: Upload by directory (without specifying file)
@@ -60,7 +58,7 @@ steps:
     testResultFolderName: '$(Build.SourcesDirectory)/coverage'
     verbose: true
   env:
-    CODECOV_TOKEN: $(CODECOV_TOKEN)
+    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
 ```
 
 ### Example 3: Using network root folder to fix path mapping issues
@@ -74,7 +72,7 @@ steps:
     networkRootFolder: 'src'
     verbose: true
   env:
-    CODECOV_TOKEN: $(CODECOV_TOKEN)
+    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
 ```
 
 This example uses the `networkRootFolder` parameter to help Codecov.io correctly map file paths in the coverage report to your repository structure. This is particularly useful when you encounter "Unusable report due to source code unavailability" or "path mismatch" errors.
@@ -88,7 +86,7 @@ steps:
   inputs:
     testResultFolderName: '$(Build.SourcesDirectory)/output/testResults'
   env:
-    CODECOV_TOKEN: $(CODECOV_TOKEN)
+    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
 ```
 
 ### Example 5: Upload by directory (specifying file)
@@ -101,7 +99,7 @@ steps:
     testResultFolderName: '$(Build.SourcesDirectory)/output/testResults'
     coverageFileName: 'JaCoCo_coverage.xml'
   env:
-    CODECOV_TOKEN: $(CODECOV_TOKEN)
+    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
 ```
 
 ### Example 6: Using codecovToken input parameter instead of environment variable
@@ -112,10 +110,10 @@ steps:
   displayName: 'Upload coverage to Codecov.io with token input'
   inputs:
     testResultFolderName: '$(Build.SourcesDirectory)/coverage'
-    codecovToken: $(CODECOV_TOKEN)
+    codecovToken: 'YOUR_CODECOV_TOKEN_HERE'
 ```
 
-In this example, the Codecov token is passed directly as an input parameter instead of as an environment variable. This provides an alternative way to supply the token when needed.
+In this example, the Codecov token is passed directly as an input parameter instead of as an environment variable. This provides an alternative way to supply the token when needed. Replace 'YOUR_CODECOV_TOKEN_HERE' with your actual Codecov token.
 
 ## How it works
 
@@ -131,7 +129,7 @@ The task performs the following steps:
 
 If the task fails, check the following:
 
-- Ensure the `CODECOV_TOKEN` environment variable is set correctly.
+- Ensure the `CODECOV_TOKEN` environment variable or `codecovToken` input parameter is set correctly with your Codecov token.
 - Verify the coverage file exists at the specified path.
 - Check if the coverage file is in a supported format (XML, JSON, etc.).
 
