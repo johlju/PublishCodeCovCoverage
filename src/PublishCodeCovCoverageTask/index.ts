@@ -240,11 +240,10 @@ function handleUnhandledError(err: Error): void {
 // Execute the task
 run().catch(handleUnhandledError);
 
-// Expose the handler and variables for testing purposes
-// This conditional prevents it from affecting the actual behavior
-if (process.env.NODE_ENV === 'test') {
-    module.exports.__runCatchHandlerForTest = handleUnhandledError;
-    module.exports.setTokenWasSetByTaskForTest = (value: boolean): void => {
+// Expose the handler and variables for testing purposes as named exports
+// This conditional prevents them from being included in production builds
+export const __runCatchHandlerForTest = process.env.NODE_ENV === 'test' ? handleUnhandledError : undefined;
+export const setTokenWasSetByTaskForTest = process.env.NODE_ENV === 'test' ?
+    (value: boolean): void => {
         tokenWasSetByTask = value;
-    };
-}
+    } : undefined;
