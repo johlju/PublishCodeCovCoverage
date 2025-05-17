@@ -1,10 +1,17 @@
 import * as fs from 'node:fs';
+import { promises as fsPromises } from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { verifyFileChecksum, calculateFileHashStreaming } from '../utils/fileUtils';
 
-// Mock fs and crypto modules
-jest.mock('node:fs');
+// Mock fs, fs.promises, path and crypto modules
+jest.mock('node:fs', () => ({
+    ...jest.requireActual('node:fs'),
+    promises: {
+        readFile: jest.fn(),
+    },
+    createReadStream: jest.fn(),
+}));
 jest.mock('node:path');
 jest.mock('node:crypto');
 
@@ -35,9 +42,7 @@ describe('verifyFileChecksum', () => {
     afterEach(() => {
         // Restore original console.log after each test
         console.log = originalConsoleLog;
-    });
-
-    it('should verify checksum without errors for valid checksum', async () => {
+    });    it('should verify checksum without errors for valid checksum', async () => {
         // Mock file path and checksum file path
         const filePath = '/path/to/file.txt';
         const checksumFilePath = '/path/to/checksums.txt';
@@ -45,14 +50,14 @@ describe('verifyFileChecksum', () => {
         // Mock path.basename to return the filename
         (path.basename as jest.Mock).mockReturnValue('file.txt');
 
-        // Mock fs.readFileSync for the checksum file
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        // Mock fsPromises.readFile for the checksum file
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'abcdef1234567890 file.txt\nfedcba0987654321 other.txt';
+                return Promise.resolve('abcdef1234567890 file.txt\nfedcba0987654321 other.txt');
             } else if (path === filePath) {
-                return Buffer.from('file content');
+                return Promise.resolve(Buffer.from('file content'));
             }
-            return null;
+            return Promise.resolve(null);
         });
 
         // Mock createReadStream
@@ -85,18 +90,14 @@ describe('verifyFileChecksum', () => {
             on: mockHashOn
         };
 
-        (crypto.createHash as jest.Mock).mockReturnValue(mockHash);
-
-        // Execute function and verify it doesn't throw
+        (crypto.createHash as jest.Mock).mockReturnValue(mockHash);        // Execute function and verify it doesn't throw
         await expect(verifyFileChecksum(filePath, checksumFilePath)).resolves.not.toThrow();
-        expect(fs.readFileSync).toHaveBeenCalledWith(checksumFilePath, 'utf8');
+        expect(fsPromises.readFile).toHaveBeenCalledWith(checksumFilePath, 'utf8');
         expect(fs.createReadStream).toHaveBeenCalledWith(filePath);
         expect(crypto.createHash).toHaveBeenCalledWith('sha256');
         expect(mockHashUpdate).toHaveBeenCalledWith(Buffer.from('file content'));
         expect(mockHashDigest).toHaveBeenCalledWith('hex');
-    });
-
-    it('should throw error when checksum file does not contain the filename', async () => {
+    });    it('should throw error when checksum file does not contain the filename', async () => {
         // Mock file path and checksum file path
         const filePath = '/path/to/file.txt';
         const checksumFilePath = '/path/to/checksums.txt';
@@ -104,20 +105,18 @@ describe('verifyFileChecksum', () => {
         // Mock path.basename to return the filename
         (path.basename as jest.Mock).mockReturnValue('file.txt');
 
-        // Mock fs.readFileSync for the checksum file without the target file
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        // Mock fsPromises.readFile for the checksum file without the target file
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'fedcba0987654321 other.txt';
+                return Promise.resolve('fedcba0987654321 other.txt');
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Execute function and expect error
         await expect(verifyFileChecksum(filePath, checksumFilePath))
             .rejects.toThrow(`Checksum not found for file.txt in ${checksumFilePath}`);
-    });
-
-    it('should throw error when calculated hash does not match expected hash', async () => {
+    });    it('should throw error when calculated hash does not match expected hash', async () => {
         // Mock file path and checksum file path
         const filePath = '/path/to/file.txt';
         const checksumFilePath = '/path/to/checksums.txt';
@@ -125,12 +124,12 @@ describe('verifyFileChecksum', () => {
         // Mock path.basename to return the filename
         (path.basename as jest.Mock).mockReturnValue('file.txt');
 
-        // Mock fs.readFileSync for the checksum file
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        // Mock fsPromises.readFile for the checksum file
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'expected1234567890 file.txt';
+                return Promise.resolve('expected1234567890 file.txt');
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Mock createReadStream
@@ -168,9 +167,7 @@ describe('verifyFileChecksum', () => {
         // Execute function and expect error
         await expect(verifyFileChecksum(filePath, checksumFilePath))
             .rejects.toThrow(`SHA-256 checksum verification failed for ${filePath}:\nExpected: expected1234567890\nActual: actual0987654321`);
-    });
-
-    it('should not match partial filenames', async () => {
+    });    it('should not match partial filenames', async () => {
         // Mock file path and checksum file path
         const filePath = '/path/to/file.txt';
         const checksumFilePath = '/path/to/checksums.txt';
@@ -178,38 +175,34 @@ describe('verifyFileChecksum', () => {
         // Mock path.basename to return the filename
         (path.basename as jest.Mock).mockReturnValue('file.txt');
 
-        // Mock fs.readFileSync for the checksum file with a similar but not exact filename
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        // Mock fsPromises.readFile for the checksum file with a similar but not exact filename
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'abcdef1234567890 profile.txt\nfedcba0987654321 myfile.txt';
+                return Promise.resolve('abcdef1234567890 profile.txt\nfedcba0987654321 myfile.txt');
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Execute function and expect error because no exact match for 'file.txt'
         await expect(verifyFileChecksum(filePath, checksumFilePath))
             .rejects.toThrow(`Checksum not found for file.txt in ${checksumFilePath}`);
-    });
-
-    it('should throw error when checksum file cannot be read', async () => {
+    });    it('should throw error when checksum file cannot be read', async () => {
         // Mock file path and checksum file path
         const filePath = '/path/to/file.txt';
         const checksumFilePath = '/path/to/checksums.txt';
 
-        // Mock fs.readFileSync to throw an error for the checksum file
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        // Mock fsPromises.readFile to reject with an error for the checksum file
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                throw new Error('ENOENT: File not found');
+                return Promise.reject(new Error('ENOENT: File not found'));
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Execute function and expect proper error
         await expect(verifyFileChecksum(filePath, checksumFilePath))
             .rejects.toThrow(`Failed to read checksum file ${checksumFilePath}: ENOENT: File not found`);
-    });
-
-    it('should throw error when target file cannot be read', async () => {
+    });    it('should throw error when target file cannot be read', async () => {
         // Mock file path and checksum file path
         const filePath = '/path/to/file.txt';
         const checksumFilePath = '/path/to/checksums.txt';
@@ -217,12 +210,12 @@ describe('verifyFileChecksum', () => {
         // Mock path.basename to return the filename
         (path.basename as jest.Mock).mockReturnValue('file.txt');
 
-        // Mock fs.readFileSync for the checksum file
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        // Mock fsPromises.readFile for the checksum file
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'abcdef1234567890 file.txt\nfedcba0987654321 other.txt';
+                return Promise.resolve('abcdef1234567890 file.txt\nfedcba0987654321 other.txt');
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Mock createReadStream to throw an error immediately
@@ -233,9 +226,7 @@ describe('verifyFileChecksum', () => {
         // Execute function and expect proper error
         await expect(verifyFileChecksum(filePath, checksumFilePath))
             .rejects.toThrow(`Failed to verify checksum for ${filePath}: Failed to read file ${filePath}: ENOENT: File not found`);
-    });
-
-    it('should throw error when hash calculation fails', async () => {
+    });    it('should throw error when hash calculation fails', async () => {
         // Mock file path and checksum file path
         const filePath = '/path/to/file.txt';
         const checksumFilePath = '/path/to/checksums.txt';
@@ -243,12 +234,12 @@ describe('verifyFileChecksum', () => {
         // Mock path.basename to return the filename
         (path.basename as jest.Mock).mockReturnValue('file.txt');
 
-        // Mock fs.readFileSync for the checksum file
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        // Mock fsPromises.readFile for the checksum file
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'abcdef1234567890 file.txt\nfedcba0987654321 other.txt';
+                return Promise.resolve('abcdef1234567890 file.txt\nfedcba0987654321 other.txt');
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Mock the file stream that will work normally
@@ -299,14 +290,12 @@ describe('verifyFileChecksum', () => {
         const checksumFilePath = '/path/to/checksums.txt';
 
         // Mock path.basename to return the filename
-        (path.basename as jest.Mock).mockReturnValue('file.txt');
-
-        // Mock fs.readFileSync for the checksum file
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        (path.basename as jest.Mock).mockReturnValue('file.txt');        // Mock fsPromises.readFile for the checksum file
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'abcdef1234567890 file.txt';
+                return Promise.resolve('abcdef1234567890 file.txt');
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Mock createReadStream
@@ -360,14 +349,12 @@ describe('verifyFileChecksum', () => {
         const checksumFilePath = '/path/to/checksums.txt';
 
         // Mock path.basename to return the filename
-        (path.basename as jest.Mock).mockReturnValue('file.txt');
-
-        // Mock fs.readFileSync for an empty checksum file
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        (path.basename as jest.Mock).mockReturnValue('file.txt');        // Mock fsPromises.readFile for an empty checksum file
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return '';  // Empty file
+                return Promise.resolve('');  // Empty file
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Execute function and expect error about missing checksum
@@ -382,14 +369,12 @@ describe('verifyFileChecksum', () => {
         const checksumFilePath = '/path/to/checksums.txt';
 
         // Mock path.basename to return the filename
-        (path.basename as jest.Mock).mockReturnValue('file.txt');
-
-        // Mock fs.readFileSync for a malformed checksum file
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        (path.basename as jest.Mock).mockReturnValue('file.txt');        // Mock fsPromises.readFile for a malformed checksum file
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'abcdef1234567890file.txt\nvalidhash otherfile.txt';  // No space between hash and filename
+                return Promise.resolve('abcdef1234567890file.txt\nvalidhash otherfile.txt');  // No space between hash and filename
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Execute function and expect error about missing checksum
@@ -404,17 +389,15 @@ describe('verifyFileChecksum', () => {
         const checksumFilePath = '/path/to/checksums.txt';
 
         // Mock path.basename to return the filename
-        (path.basename as jest.Mock).mockReturnValue('file.txt');
-
-        // Mock fs.readFileSync for checksum file with comments
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        (path.basename as jest.Mock).mockReturnValue('file.txt');        // Mock fsPromises.readFile for checksum file with comments
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return '# SHA-256 checksums\n' +
+                return Promise.resolve('# SHA-256 checksums\n' +
                        '# Generated on 2023-08-15\n' +
                        'abcdef1234567890 file.txt\n' +
-                       '# End of file';
+                       '# End of file');
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Mock createReadStream
@@ -458,14 +441,12 @@ describe('verifyFileChecksum', () => {
         const checksumFilePath = '/path/to/checksums.txt';
 
         // Mock path.basename to return the Unicode filename
-        (path.basename as jest.Mock).mockReturnValue('文件.txt');
-
-        // Mock fs.readFileSync for the checksum file with Unicode filename
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        (path.basename as jest.Mock).mockReturnValue('文件.txt');        // Mock fsPromises.readFile for the checksum file with Unicode filename
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'abcdef1234567890 文件.txt';
+                return Promise.resolve('abcdef1234567890 文件.txt');
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Mock createReadStream
@@ -509,15 +490,13 @@ describe('verifyFileChecksum', () => {
         const checksumFilePath = '/path/to/checksums.txt';
 
         // Mock path.basename to return the filename
-        (path.basename as jest.Mock).mockReturnValue('file.txt');
-
-        // Mock fs.readFileSync for checksum file with irregular spacing
-        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+        (path.basename as jest.Mock).mockReturnValue('file.txt');        // Mock fsPromises.readFile for checksum file with irregular spacing
+        (fsPromises.readFile as jest.Mock).mockImplementation((path: string, encoding?: string) => {
             if (path === checksumFilePath && encoding === 'utf8') {
-                return 'abcdef1234567890    file.txt\n' +  // Multiple spaces
-                       'fedcba0987654321\tother.txt';      // Tab character
+                return Promise.resolve('abcdef1234567890    file.txt\n' +  // Multiple spaces
+                       'fedcba0987654321\tother.txt');      // Tab character
             }
-            return Buffer.from('file content');
+            return Promise.resolve(Buffer.from('file content'));
         });
 
         // Mock createReadStream

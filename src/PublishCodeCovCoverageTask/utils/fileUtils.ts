@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { promises as fsPromises } from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 
@@ -28,8 +29,8 @@ export async function verifyFileChecksum(
 
     let checksumFileContent: string;
     try {
-        // Read the checksum file content
-        checksumFileContent = fs.readFileSync(checksumFilePath, 'utf8');
+        // Read the checksum file content asynchronously
+        checksumFileContent = await fsPromises.readFile(checksumFilePath, 'utf8');
     } catch (error) {
         throw new Error(`Failed to read checksum file ${checksumFilePath}: ${error instanceof Error ? error.message : String(error)}`);
     }
