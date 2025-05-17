@@ -1,11 +1,11 @@
 import * as tl from 'azure-pipelines-task-lib/task';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as https from 'https';
 import { execFileSync } from 'node:child_process';
 import { verifyFileChecksum } from './utils/fileUtils';
 import { quoteCommandArgument } from './utils/commandUtils';
 import { clearSensitiveEnvironmentVariables, setTokenWasSetByTask } from './utils/environmentUtils';
+import { downloadFile } from './utils/webUtils';
 
 export async function run(): Promise<void> {
     try {
@@ -192,33 +192,7 @@ export async function run(): Promise<void> {
     }
 }
 
-export async function downloadFile(url: string, dest: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        console.log(`Downloading ${url} to ${dest}`);
-        const file = fs.createWriteStream(dest);
-        https.get(url, (response) => {
-            if (response.statusCode !== 200) {
-                return reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
-            }
-
-            response.pipe(file);
-
-            file.on('finish', () => {
-                file.close(() => {
-                    console.log(`Downloaded ${url} successfully`);
-                    resolve();
-                });
-            });
-
-            file.on('error', (err) => {
-                fs.unlink(dest, () => reject(err));
-            });
-
-        }).on('error', (err) => {
-            fs.unlink(dest, () => reject(err));
-        });
-    });
-}
+// The downloadFile function has been moved to ./utils/webUtils.ts
 
 // The quoteCommandArgument function has been moved to ./utils/commandUtils.ts
 
