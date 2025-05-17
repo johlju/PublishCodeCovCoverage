@@ -9,9 +9,14 @@ jest.mock('azure-pipelines-task-lib/task');
 jest.mock('node:child_process');
 jest.mock('https');
 jest.mock('fs');
+jest.mock('../utils/fileUtils', () => ({
+  verifyFileChecksum: jest.fn().mockReturnValue(true)
+}));
 
 // Import functions after mocking dependencies
 import { run, downloadFile } from '../index';
+// Get reference to the mocked verifyFileChecksum
+import { verifyFileChecksum } from '../utils/fileUtils';
 
 describe('PublishCodeCovCoverage', () => {
   // Store original env to restore it after each test
@@ -771,5 +776,12 @@ describe('PublishCodeCovCoverage', () => {
       ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'],
       expect.anything()
     );
+  });
+
+  test('should verify file checksum using the mocked function', async () => {
+    await run();
+    
+    // Verify that verifyFileChecksum was called with the correct parameters
+    expect(verifyFileChecksum).toHaveBeenCalledWith('codecov', 'codecov.SHA256SUM');
   });
 });
