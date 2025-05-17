@@ -19,7 +19,11 @@ export async function downloadFile(url: string, dest: string): Promise<void> {
             response.pipe(file);
 
             file.on('finish', () => {
-                file.close(() => {
+                file.close((err) => {
+                    if (err) {
+                        fs.unlink(dest, () => reject(err));
+                        return;
+                    }
                     console.log(`Downloaded ${url} successfully`);
                     resolve();
                 });
