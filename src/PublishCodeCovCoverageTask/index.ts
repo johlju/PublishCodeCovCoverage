@@ -16,6 +16,9 @@ function clearSensitiveEnvironmentVariables(): void {
         // 2. It's better for security to remove all traces of sensitive variables
         // 3. It resets the environment to its original state if the variable wasn't present before
         // 4. An empty string might still be processed differently than a non-existent variable by some APIs
+        // Note: Using 'delete' on process.env properties can cause de-optimization of the process.env object in Node.js
+        // as it converts it from a hidden class to a dictionary mode. This is a conscious security vs. performance
+        // trade-off, where we prioritize security by fully removing sensitive data over slight performance implications.
         delete process.env.CODECOV_TOKEN;
     }
 }
