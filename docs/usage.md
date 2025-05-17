@@ -26,11 +26,11 @@ The task requires the following input parameters:
 | networkRootFolder | Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified. | No |
 | verbose | Enable verbose output for the Codecov uploader | No |
 
-**Token Handling:**
+### Token Handling
 
 The recommended approach is to provide your Codecov token via the `codecovToken` input parameter as shown in the examples below.
 
-> **IMPORTANT**: Mark CODECOV_TOKEN as a secret to avoid log exposure. Note that secret pipeline variables are not exposed to pull requests from forks.
+>[!IMPORTANT]: Mark CODECOV_TOKEN as a secret to avoid log exposure. Note that secret pipeline variables are not exposed to pull requests from forks.
 
 ## Examples
 

@@ -55,6 +55,8 @@ To use the custom Azure Pipeline extension, follow these steps:
 2. Provide your Codecov token either as an environment variable `CODECOV_TOKEN` or as an input parameter `codecovToken`.
 3. Configure the task with the proper build and test result folder paths.
 
+>[!IMPORTANT]: Mark CODECOV_TOKEN as a secret to avoid log exposure. Note that secret pipeline variables are not exposed to pull requests from forks.
+
 Here is an example of an Azure Pipeline YAML configuration:
 
 ```yaml
