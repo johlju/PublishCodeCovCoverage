@@ -30,7 +30,12 @@ The task requires the following input parameters:
 
 The recommended approach is to provide your Codecov token via the `codecovToken` input parameter as shown in the examples below.
 
->[!IMPORTANT]: Use secret variables for your Codecov token to prevent accidental exposure in logs. When using the `codecovToken` input parameter, define a secret pipeline variable and reference it like this: `codecovToken: $(MY_SECRET_TOKEN)` where `MY_SECRET_TOKEN` is marked as a "Secret" in the Azure DevOps pipeline variables UI. Note that secret pipeline variables are not exposed to pull requests from forks.
+>[!IMPORTANT]: Use secret variables for your Codecov token to prevent accidental exposure in logs.
+>When using the `codecovToken` input parameter, define a secret pipeline variable and reference it
+>like this: `codecovToken: $(MY_SECRET_TOKEN)` where `MY_SECRET_TOKEN` is marked as a "Secret" in
+>the Azure DevOps pipeline variables UI. if you are using the `CODECOV_TOKEN` environment variable
+>method, ensure `CODECOV_TOKEN` is marked as a secret environment variable. Note that secret variables
+>are not exposed to pull requests from forks.
 
 ## Examples
 
