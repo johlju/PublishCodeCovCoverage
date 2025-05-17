@@ -352,6 +352,207 @@ describe('verifyFileChecksum', () => {
         expect(mockLogger).toHaveBeenNthCalledWith(1, `Verifying SHA-256 checksum for ${filePath} using Node.js crypto module`);
         expect(mockLogger).toHaveBeenNthCalledWith(2, `SHA-256 checksum verified for ${filePath}`);
     });
+
+    // Edge case: Empty checksum file
+    it('should throw error when checksum file is empty', async () => {
+        // Mock file path and checksum file path
+        const filePath = '/path/to/file.txt';
+        const checksumFilePath = '/path/to/checksums.txt';
+
+        // Mock path.basename to return the filename
+        (path.basename as jest.Mock).mockReturnValue('file.txt');
+
+        // Mock fs.readFileSync for an empty checksum file
+        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+            if (path === checksumFilePath && encoding === 'utf8') {
+                return '';  // Empty file
+            }
+            return Buffer.from('file content');
+        });
+
+        // Execute function and expect error about missing checksum
+        await expect(verifyFileChecksum(filePath, checksumFilePath))
+            .rejects.toThrow(`Checksum not found for file.txt in ${checksumFilePath}`);
+    });
+
+    // Edge case: Malformed checksum line (no whitespace separator)
+    it('should handle malformed checksum line without proper format', async () => {
+        // Mock file path and checksum file path
+        const filePath = '/path/to/file.txt';
+        const checksumFilePath = '/path/to/checksums.txt';
+
+        // Mock path.basename to return the filename
+        (path.basename as jest.Mock).mockReturnValue('file.txt');
+
+        // Mock fs.readFileSync for a malformed checksum file
+        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+            if (path === checksumFilePath && encoding === 'utf8') {
+                return 'abcdef1234567890file.txt\nvalidhash otherfile.txt';  // No space between hash and filename
+            }
+            return Buffer.from('file content');
+        });
+
+        // Execute function and expect error about missing checksum
+        await expect(verifyFileChecksum(filePath, checksumFilePath))
+            .rejects.toThrow(`Checksum not found for file.txt in ${checksumFilePath}`);
+    });
+
+    // Edge case: Checksum file with comments or special formatting lines
+    it('should ignore comment lines in checksum file', async () => {
+        // Mock file path and checksum file path
+        const filePath = '/path/to/file.txt';
+        const checksumFilePath = '/path/to/checksums.txt';
+
+        // Mock path.basename to return the filename
+        (path.basename as jest.Mock).mockReturnValue('file.txt');
+
+        // Mock fs.readFileSync for checksum file with comments
+        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+            if (path === checksumFilePath && encoding === 'utf8') {
+                return '# SHA-256 checksums\n' +
+                       '# Generated on 2023-08-15\n' +
+                       'abcdef1234567890 file.txt\n' +
+                       '# End of file';
+            }
+            return Buffer.from('file content');
+        });
+
+        // Mock createReadStream
+        const mockStreamOn = jest.fn((event: string, handler: any) => {
+            if (event === 'data') {
+                handler(Buffer.from('file content'));
+            }
+            if (event === 'end') {
+                setTimeout(() => handler(), 0);
+            }
+            return mockReadStream;
+        });
+
+        const mockReadStream: MockedStream = { on: mockStreamOn };
+        (fs.createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+
+        // Mock crypto hash functions
+        const mockHashUpdate = jest.fn();
+        const mockHashDigest = jest.fn().mockReturnValue('abcdef1234567890');
+        const mockHashOn = jest.fn();
+
+        mockHashUpdate.mockReturnValue({ digest: mockHashDigest, on: mockHashOn });
+        mockHashOn.mockReturnValue({ update: mockHashUpdate, digest: mockHashDigest });
+
+        const mockHash: MockedHash = {
+            update: mockHashUpdate,
+            digest: mockHashDigest,
+            on: mockHashOn
+        };
+
+        (crypto.createHash as jest.Mock).mockReturnValue(mockHash);
+
+        // Execute function - should succeed ignoring comment lines
+        await expect(verifyFileChecksum(filePath, checksumFilePath)).resolves.not.toThrow();
+    });
+
+    // Edge case: File with Unicode filename
+    it('should handle files with Unicode filenames', async () => {
+        // Mock file path with Unicode characters
+        const filePath = '/path/to/文件.txt';
+        const checksumFilePath = '/path/to/checksums.txt';
+
+        // Mock path.basename to return the Unicode filename
+        (path.basename as jest.Mock).mockReturnValue('文件.txt');
+
+        // Mock fs.readFileSync for the checksum file with Unicode filename
+        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+            if (path === checksumFilePath && encoding === 'utf8') {
+                return 'abcdef1234567890 文件.txt';
+            }
+            return Buffer.from('file content');
+        });
+
+        // Mock createReadStream
+        const mockStreamOn = jest.fn((event: string, handler: any) => {
+            if (event === 'data') {
+                handler(Buffer.from('file content'));
+            }
+            if (event === 'end') {
+                setTimeout(() => handler(), 0);
+            }
+            return mockReadStream;
+        });
+
+        const mockReadStream: MockedStream = { on: mockStreamOn };
+        (fs.createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+
+        // Mock crypto hash functions
+        const mockHashUpdate = jest.fn();
+        const mockHashDigest = jest.fn().mockReturnValue('abcdef1234567890');
+        const mockHashOn = jest.fn();
+
+        mockHashUpdate.mockReturnValue({ digest: mockHashDigest, on: mockHashOn });
+        mockHashOn.mockReturnValue({ update: mockHashUpdate, digest: mockHashDigest });
+
+        const mockHash: MockedHash = {
+            update: mockHashUpdate,
+            digest: mockHashDigest,
+            on: mockHashOn
+        };
+
+        (crypto.createHash as jest.Mock).mockReturnValue(mockHash);
+
+        // Execute function - should succeed with Unicode filename
+        await expect(verifyFileChecksum(filePath, checksumFilePath)).resolves.not.toThrow();
+    });
+
+    // Edge case: Multiple spaces in checksum file
+    it('should handle checksum file with multiple spaces or tabs between hash and filename', async () => {
+        // Mock file path and checksum file path
+        const filePath = '/path/to/file.txt';
+        const checksumFilePath = '/path/to/checksums.txt';
+
+        // Mock path.basename to return the filename
+        (path.basename as jest.Mock).mockReturnValue('file.txt');
+
+        // Mock fs.readFileSync for checksum file with irregular spacing
+        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+            if (path === checksumFilePath && encoding === 'utf8') {
+                return 'abcdef1234567890    file.txt\n' +  // Multiple spaces
+                       'fedcba0987654321\tother.txt';      // Tab character
+            }
+            return Buffer.from('file content');
+        });
+
+        // Mock createReadStream
+        const mockStreamOn = jest.fn((event: string, handler: any) => {
+            if (event === 'data') {
+                handler(Buffer.from('file content'));
+            }
+            if (event === 'end') {
+                setTimeout(() => handler(), 0);
+            }
+            return mockReadStream;
+        });
+
+        const mockReadStream: MockedStream = { on: mockStreamOn };
+        (fs.createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+
+        // Mock crypto hash functions
+        const mockHashUpdate = jest.fn();
+        const mockHashDigest = jest.fn().mockReturnValue('abcdef1234567890');
+        const mockHashOn = jest.fn();
+
+        mockHashUpdate.mockReturnValue({ digest: mockHashDigest, on: mockHashOn });
+        mockHashOn.mockReturnValue({ update: mockHashUpdate, digest: mockHashDigest });
+
+        const mockHash: MockedHash = {
+            update: mockHashUpdate,
+            digest: mockHashDigest,
+            on: mockHashOn
+        };
+
+        (crypto.createHash as jest.Mock).mockReturnValue(mockHash);
+
+        // Execute function - should succeed with irregular spacing
+        await expect(verifyFileChecksum(filePath, checksumFilePath)).resolves.not.toThrow();
+    });
 });
 
 describe('calculateFileHashStreaming', () => {
