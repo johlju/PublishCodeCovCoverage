@@ -139,7 +139,7 @@ describe('PublishCodeCovCoverage', () => {
   test('run function should handle missing token', async () => {
     // Mock CODECOV_TOKEN as undefined
     (tl.getVariable as jest.Mock).mockReturnValueOnce(undefined);
-    process.env.CODECOV_TOKEN = undefined;
+    process.env.CODECOV_TOKEN = '';
 
     await run();
 
