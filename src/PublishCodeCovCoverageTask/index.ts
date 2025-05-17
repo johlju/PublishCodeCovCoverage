@@ -28,15 +28,14 @@ export async function run(): Promise<void> {
         const coverageFileName = tl.getInput('coverageFileName', false) || '';
         const networkRootFolder = tl.getInput('networkRootFolder', false) || '';
         const verbose = tl.getBoolInput('verbose', false) || false;
-          // Get token from task input or pipeline variable
-        const codecovTokenInput = tl.getInput('codecovToken', false) || '';
+          // Get token from task input or pipeline variable, remove any whitespace
+        const codecovTokenInput = (tl.getInput('codecovToken', false) || '').trim();
         const codecovTokenFromVariable = tl.getVariable('CODECOV_TOKEN');
-          // Check if input token is empty or just whitespace, if so fallback to pipeline variable
-        const trimmedTokenInput = codecovTokenInput.trim();
-        const codecovToken = trimmedTokenInput !== '' ? trimmedTokenInput : codecovTokenFromVariable;
+        // If input token is empty, fallback to pipeline variable
+        const codecovToken = codecovTokenInput !== '' ? codecovTokenInput : codecovTokenFromVariable;
 
         // Log token source for debugging
-        if (trimmedTokenInput !== '') {
+        if (codecovTokenInput !== '') {
             console.log('Using Codecov token from task input parameter');
         } else if (codecovTokenFromVariable) {
             console.log('Using Codecov token from pipeline variable');
