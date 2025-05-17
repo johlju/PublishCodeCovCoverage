@@ -16,6 +16,7 @@ jest.mock('../utils/fileUtils', () => ({
 import { run, downloadFile } from '../index';
 // Get reference to the mocked verifyFileChecksum
 import { verifyFileChecksum } from '../utils/fileUtils';
+import { setTokenWasSetByTask } from '../utils/environmentUtils';
 
 describe('PublishCodeCovCoverage', () => {
   // Store original env to restore it after each test
@@ -335,20 +336,15 @@ describe('PublishCodeCovCoverage', () => {
   test('handles unhandled errors at the top level and clears token if set by task', async () => {
     // Create a spy on console.error
     const consoleSpy = jest.spyOn(console, 'error');
-
     // Set up a token and the tokenWasSetByTask flag
-    // We need to access the internal variable to simulate it being set
     process.env.CODECOV_TOKEN = 'test-token-for-unhandled-error';
-    const taskModule = require('../index');
-    if (typeof taskModule.setTokenWasSetByTaskForTest === 'function') {
-      taskModule.setTokenWasSetByTaskForTest(true);
-    }
+    setTokenWasSetByTask(true);
 
     // Create a fake error
     const fakeError = new Error("Test unhandled error");
 
     // Directly call the catch handler at the bottom of the file
-    const runCatchHandler = taskModule.__runCatchHandlerForTest;
+    const { __runCatchHandlerForTest: runCatchHandler } = require('../index');
     if (runCatchHandler) {
       runCatchHandler(fakeError);
 
@@ -677,9 +673,6 @@ describe('PublishCodeCovCoverage', () => {
   });
 
   test('should clear CODECOV_TOKEN only if it was set by the task', async () => {
-    // We'll need to access our module's tokenWasSetByTask variable
-    const taskModule = require('../index');
-
     // First case: Task doesn't change the token value
     // Setup an existing token in the environment
     const initialToken = 'initial-token';
@@ -699,9 +692,7 @@ describe('PublishCodeCovCoverage', () => {
     });
 
     // Reset the tokenWasSetByTask flag from previous tests
-    if (typeof taskModule.setTokenWasSetByTaskForTest === 'function') {
-      taskModule.setTokenWasSetByTaskForTest(false);
-    }
+    setTokenWasSetByTask(false);
 
     await run();
 
