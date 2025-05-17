@@ -193,13 +193,6 @@ export async function run(): Promise<void> {
     }
 }
 
-// The downloadFile function has been moved to ./utils/webUtils.ts
-
-// The quoteCommandArgument function has been moved to ./utils/commandUtils.ts
-
-// The verifyFileChecksum function has been moved to ./utils/fileUtils.ts
-// The handleUnhandledError function has been moved to ./utils/errorUtils.ts
-
 // Execute the task
 run().catch(handleUnhandledError);
 
