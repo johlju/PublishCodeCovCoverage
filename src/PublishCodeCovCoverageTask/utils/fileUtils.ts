@@ -5,12 +5,14 @@ import * as crypto from 'node:crypto';
 /**
  * Verifies a file's SHA-256 checksum against an expected value from a checksum file
  * Cross-platform alternative to shasum -a 256 -c <checksum_file>
+ * Uses streaming approach to handle large files efficiently
  *
  * @param filePath Path to the file to verify
  * @param checksumFilePath Path to the file containing checksums in format: "<hash> <filename>"
+ * @returns Promise that resolves when verification completes, rejects on error
  * @throws Error if verification fails, file not found, or other I/O errors occur
  */
-export function verifyFileChecksum(filePath: string, checksumFilePath: string): void {
+export async function verifyFileChecksum(filePath: string, checksumFilePath: string): Promise<void> {
     console.log(`Verifying SHA-256 checksum for ${filePath} using Node.js crypto module`);
 
     let checksumFileContent: string;
@@ -40,22 +42,56 @@ export function verifyFileChecksum(filePath: string, checksumFilePath: string): 
     // Extract expected hash - typically first part of the line
     const expectedHash = checksumLine.trim().split(/\s+/)[0].toLowerCase();
 
-    let fileBuffer: Buffer;
+    // Calculate actual hash using a streaming approach
     try {
-        // Calculate actual hash
-        fileBuffer = fs.readFileSync(filePath);
+        const actualHash = await calculateFileHashStreaming(filePath);
+
+        // Compare hashes
+        if (actualHash !== expectedHash) {
+            throw new Error(`SHA-256 checksum verification failed for ${filePath}:\nExpected: ${expectedHash}\nActual: ${actualHash}`);
+        }
+
+        console.log(`SHA-256 checksum verified for ${filePath}`);
     } catch (error) {
-        throw new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(`Failed to verify checksum for ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
     }
+}
 
-    const hashSum = crypto.createHash('sha256');
-    hashSum.update(fileBuffer);
-    const actualHash = hashSum.digest('hex').toLowerCase();
+/**
+ * Calculates the SHA-256 hash of a file using a streaming approach
+ * This is more memory efficient for large files
+ *
+ * @param filePath Path to the file to hash
+ * @returns Promise that resolves with the lowercase hex digest of the hash
+ */
+function calculateFileHashStreaming(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        try {
+            // Create a read stream from the file
+            const fileStream = fs.createReadStream(filePath);
+            const hashSum = crypto.createHash('sha256');
 
-    // Compare hashes
-    if (actualHash !== expectedHash) {
-        throw new Error(`SHA-256 checksum verification failed for ${filePath}:\nExpected: ${expectedHash}\nActual: ${actualHash}`);
-    }
+            // Handle stream events
+            fileStream.on('error', (error) => {
+                reject(new Error(`Failed to read file ${filePath}: ${error.message}`));
+            });
 
-    console.log(`SHA-256 checksum verified for ${filePath}`);
+            if (hashSum.on) {
+                hashSum.on('error', (error) => {
+                    reject(new Error(`Hash calculation error: ${error.message}`));
+                });
+            }
+
+            fileStream.on('data', (chunk) => {
+                hashSum.update(chunk);
+            });
+
+            fileStream.on('end', () => {
+                const hash = hashSum.digest('hex').toLowerCase();
+                resolve(hash);
+            });
+        } catch (error) {
+            reject(new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`));
+        }
+    });
 }

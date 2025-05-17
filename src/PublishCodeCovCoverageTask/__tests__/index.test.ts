@@ -10,7 +10,7 @@ jest.mock('node:child_process');
 jest.mock('https');
 jest.mock('fs');
 jest.mock('../utils/fileUtils', () => ({
-  verifyFileChecksum: jest.fn().mockImplementation(() => {})
+  verifyFileChecksum: jest.fn().mockImplementation(() => Promise.resolve())
 }));
 
 // Import functions after mocking dependencies

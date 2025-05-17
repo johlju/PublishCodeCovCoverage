@@ -118,7 +118,7 @@ export async function run(): Promise<void> {
 
         console.log('Verifying Codecov CLI...');
         execFileSync('gpg', ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'], { stdio: 'inherit' });
-        verifyFileChecksum('codecov', 'codecov.SHA256SUM');
+        await verifyFileChecksum('codecov', 'codecov.SHA256SUM');
         fs.chmodSync('codecov', '755');
 
         // Check if coverage file exists
