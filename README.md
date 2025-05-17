@@ -1,6 +1,9 @@
 # Custom Azure Pipeline Extension for Codecov.io
 
-This repository contains a custom Azure Pipeline extension that handles code coverage uploads to Codecov.io. The extension uses the official Codecov CLI to securely upload coverage reports.
+> [!NOTE]
+> This is an unofficial Azure Pipeline task not affiliated with Codecov.io. It uses the official Codecov CLI from Codecov.io to upload coverage reports.
+
+This repository contains a custom Azure Pipeline extension that handles code coverage uploads to Codecov.io.
 
 ## Prerequisites
 
