@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as https from 'node:https';
 import { execFileSync } from 'node:child_process';
 import { verifyFileChecksum } from './utils/fileUtils';
+import { quoteCommandArgument } from './utils/commandUtils';
 
 // Variable to track if we set the CODECOV_TOKEN
 let tokenWasSetByTask = false;
@@ -237,18 +238,7 @@ export async function downloadFile(url: string, dest: string): Promise<void> {
     });
 }
 
-/**
- * Helper function to properly quote a command line argument
- * Escapes quotes and backslashes, then wraps the string in quotes
- * @param arg The argument to quote
- * @returns The quoted argument
- */
-function quoteCommandArgument(arg: string): string {
-    // Escape backslashes and quotes
-    const escaped = arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    // Wrap in quotes
-    return `"${escaped}"`;
-}
+// The quoteCommandArgument function has been moved to ./utils/commandUtils.ts
 
 // The verifyFileChecksum function has been moved to ./utils/fileUtils.ts
 
