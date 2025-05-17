@@ -181,7 +181,7 @@ export async function run(): Promise<void> {
         }
 
         // Log the command and arguments with proper quoting and escaping for readability
-        console.log(`Executing command: ./codecov ${args.map(arg => `"${JSON.stringify(arg).slice(1, -1)}"`).join(' ')}`);
+        console.log(`Executing command: ./codecov ${args.map(arg => quoteCommandArgument(arg)).join(' ')}`);
         execFileSync('./codecov', args, {
             stdio: 'inherit'
         });
@@ -231,6 +231,19 @@ export async function downloadFile(url: string, dest: string): Promise<void> {
             fs.unlink(dest, () => reject(err));
         });
     });
+}
+
+/**
+ * Helper function to properly quote a command line argument
+ * Escapes quotes and backslashes, then wraps the string in quotes
+ * @param arg The argument to quote
+ * @returns The quoted argument
+ */
+function quoteCommandArgument(arg: string): string {
+    // Escape backslashes and quotes
+    const escaped = arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    // Wrap in quotes
+    return `"${escaped}"`;
 }
 
 // Define the error handler for unhandled rejections
