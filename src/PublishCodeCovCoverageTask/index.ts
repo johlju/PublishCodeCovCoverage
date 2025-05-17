@@ -10,8 +10,13 @@ let tokenWasSetByTask = false;
 // Function to clear sensitive environment variables that were set by this task
 function clearSensitiveEnvironmentVariables(): void {
     if (tokenWasSetByTask && process.env.CODECOV_TOKEN) {
-        console.log('Clearing CODECOV_TOKEN environment variable for security');
-        process.env.CODECOV_TOKEN = undefined;
+        console.log('Removing CODECOV_TOKEN environment variable for security');
+        // Using delete instead of setting to empty string ('') because:
+        // 1. It completely removes the variable from process.env rather than leaving it with an empty value
+        // 2. It's better for security to remove all traces of sensitive variables
+        // 3. It resets the environment to its original state if the variable wasn't present before
+        // 4. An empty string might still be processed differently than a non-existent variable by some APIs
+        delete process.env.CODECOV_TOKEN;
     }
 }
 
