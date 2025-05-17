@@ -1,11 +1,11 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { verifyFileChecksum } from '../utils/fileUtils';
 
 // Mock fs and crypto modules
-jest.mock('fs');
-jest.mock('path');
+jest.mock('node:fs');
+jest.mock('node:path');
 jest.mock('node:crypto');
 
 describe('verifyFileChecksum', () => {
