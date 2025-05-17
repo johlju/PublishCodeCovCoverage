@@ -9,18 +9,23 @@ jest.mock('azure-pipelines-task-lib/task');
 jest.mock('node:child_process');
 jest.mock('https');
 jest.mock('fs');
+jest.mock('../utils/fileUtils', () => ({
+  verifyFileChecksum: jest.fn().mockImplementation(() => Promise.resolve())
+}));
 
 // Import functions after mocking dependencies
 import { run, downloadFile } from '../index';
+// Get reference to the mocked verifyFileChecksum
+import { verifyFileChecksum } from '../utils/fileUtils';
 
 describe('PublishCodeCovCoverage', () => {
   // Store original env to restore it after each test
   let originalEnv: NodeJS.ProcessEnv;
-  
+
   beforeEach(() => {
     // Store original environment
     originalEnv = { ...process.env };
-    
+
     jest.clearAllMocks();
 
     // Set NODE_ENV for testing the unhandled error handler
@@ -78,6 +83,7 @@ describe('PublishCodeCovCoverage', () => {
       return undefined as any;
     });
 
+
     // No longer need global path module mocking
     // We'll use spies only in specific tests as needed
 
@@ -116,7 +122,7 @@ describe('PublishCodeCovCoverage', () => {
   afterEach(() => {
     // Restore console mocks to prevent side effects between tests
     jest.restoreAllMocks();
-    
+
     // Restore original environment
     process.env = originalEnv;
   });
@@ -133,7 +139,7 @@ describe('PublishCodeCovCoverage', () => {
   test('run function should handle missing token', async () => {
     // Mock CODECOV_TOKEN as undefined
     (tl.getVariable as jest.Mock).mockReturnValueOnce(undefined);
-    process.env.CODECOV_TOKEN = undefined;
+    process.env.CODECOV_TOKEN = '';
 
     await run();
 
@@ -753,8 +759,8 @@ describe('PublishCodeCovCoverage', () => {
     );
   });
 
-  // Additional tests for GPG and shasum verification
-  test('should call gpg and shasum with correct arguments', async () => {
+  // Tests for GPG verification
+  test('should call gpg with correct arguments', async () => {
     await run();
 
     // Verify gpg import call
@@ -770,12 +776,10 @@ describe('PublishCodeCovCoverage', () => {
       ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'],
       expect.anything()
     );
+  });
 
-    // Verify shasum call
-    expect(execFileSync).toHaveBeenCalledWith(
-      'shasum',
-      ['-a', '256', '-c', 'codecov.SHA256SUM'],
-      expect.anything()
-    );
+  test('should verify file checksum using the mocked function', async () => {
+    await run();    // Verify that verifyFileChecksum was called with the correct parameters
+    expect(verifyFileChecksum).toHaveBeenCalledWith('codecov', 'codecov.SHA256SUM', console.log);
   });
 });

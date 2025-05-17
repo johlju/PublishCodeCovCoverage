@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
 import { execFileSync } from 'node:child_process';
+import { verifyFileChecksum } from './utils/fileUtils';
 
 // Variable to track if we set the CODECOV_TOKEN
 let tokenWasSetByTask = false;
@@ -117,7 +118,7 @@ export async function run(): Promise<void> {
 
         console.log('Verifying Codecov CLI...');
         execFileSync('gpg', ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'], { stdio: 'inherit' });
-        execFileSync('shasum', ['-a', '256', '-c', 'codecov.SHA256SUM'], { stdio: 'inherit' });
+        await verifyFileChecksum('codecov', 'codecov.SHA256SUM', console.log);
         fs.chmodSync('codecov', '755');
 
         // Check if coverage file exists
@@ -248,6 +249,8 @@ function quoteCommandArgument(arg: string): string {
     // Wrap in quotes
     return `"${escaped}"`;
 }
+
+// The verifyFileChecksum function has been moved to ./utils/fileUtils.ts
 
 // Define the error handler for unhandled rejections
 function handleUnhandledError(err: Error): void {
