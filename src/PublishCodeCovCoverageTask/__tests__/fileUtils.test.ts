@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
-import { verifyFileChecksum } from '../utils/fileUtils';
+import { verifyFileChecksum, calculateFileHashStreaming } from '../utils/fileUtils';
 
 // Mock fs and crypto modules
 jest.mock('node:fs');
@@ -291,5 +291,142 @@ describe('verifyFileChecksum', () => {
         // Execute function and expect error
         await expect(verifyFileChecksum(filePath, checksumFilePath))
             .rejects.toThrow(`Failed to verify checksum for ${filePath}: Failed to read file ${filePath}: Hash calculation failed`);
+    });
+});
+
+describe('calculateFileHashStreaming', () => {
+    // Store original console.log to restore later
+    const originalConsoleLog = console.log;
+
+    beforeEach(() => {
+        // Reset all mocks before each test
+        jest.resetAllMocks();
+    });
+
+    afterEach(() => {
+        // Restore original console.log after each test
+        console.log = originalConsoleLog;
+    });
+
+    it('should calculate file hash correctly', async () => {
+        // Mock file path
+        const filePath = '/path/to/file.txt';
+
+        // Mock createReadStream
+        const mockStreamOn = jest.fn((event: string, handler: any) => {
+            if (event === 'data') {
+                // Simulate data events with file content in chunks
+                handler(Buffer.from('chunk1'));
+                handler(Buffer.from('chunk2'));
+            }
+            if (event === 'end') {
+                // Simulate the end event
+                setTimeout(() => handler(), 0);
+            }
+            return mockReadStream;
+        });
+
+        const mockReadStream: MockedStream = { on: mockStreamOn };
+        (fs.createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+
+        // Mock crypto hash functions
+        const mockHashUpdate = jest.fn();
+        const mockHashDigest = jest.fn().mockReturnValue('abcdef1234567890');
+        const mockHashOn = jest.fn();
+
+        const mockHash: MockedHash = {
+            update: mockHashUpdate,
+            digest: mockHashDigest,
+            on: mockHashOn
+        };
+
+        (crypto.createHash as jest.Mock).mockReturnValue(mockHash);
+
+        // Execute the function
+        const hash = await calculateFileHashStreaming(filePath);
+
+        // Verify expectations
+        expect(fs.createReadStream).toHaveBeenCalledWith(filePath);
+        expect(crypto.createHash).toHaveBeenCalledWith('sha256');
+        expect(mockHashUpdate).toHaveBeenCalledWith(Buffer.from('chunk1'));
+        expect(mockHashUpdate).toHaveBeenCalledWith(Buffer.from('chunk2'));
+        expect(mockHashDigest).toHaveBeenCalledWith('hex');
+        expect(hash).toBe('abcdef1234567890');
+    });
+
+    it('should handle file read errors', async () => {
+        // Mock file path
+        const filePath = '/path/to/nonexistent.txt';
+
+        // Mock createReadStream with error event
+        const mockStreamOn = jest.fn((event: string, handler: any) => {
+            if (event === 'error') {
+                // Simulate an error event
+                setTimeout(() => handler(new Error('ENOENT: File not found')), 0);
+            }
+            return mockReadStream;
+        });
+
+        const mockReadStream: MockedStream = { on: mockStreamOn };
+        (fs.createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+
+        // Mock crypto hash functions
+        const mockHashUpdate = jest.fn();
+        const mockHashDigest = jest.fn();
+        const mockHashOn = jest.fn();
+
+        const mockHash: MockedHash = {
+            update: mockHashUpdate,
+            digest: mockHashDigest,
+            on: mockHashOn
+        };
+
+        (crypto.createHash as jest.Mock).mockReturnValue(mockHash);
+
+        // Execute the function and expect it to reject with error
+        await expect(calculateFileHashStreaming(filePath))
+            .rejects.toThrow(`Failed to read file ${filePath}: ENOENT: File not found`);
+    });
+
+    it('should handle hash calculation errors', async () => {
+        // Mock file path
+        const filePath = '/path/to/file.txt';
+
+        // Mock createReadStream
+        const mockStreamOn = jest.fn((event: string, handler: any) => {
+            if (event === 'data') {
+                // Simulate a data event with the file content
+                handler(Buffer.from('file content'));
+            }
+            return mockReadStream;
+        });
+
+        const mockReadStream: MockedStream = { on: mockStreamOn };
+        (fs.createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+
+        // Mock crypto hash functions with hash error
+        const mockHashUpdate = jest.fn().mockImplementation(() => {
+            throw new Error('Hash calculation failed');
+        });
+        const mockHashDigest = jest.fn();
+        const mockHashOn = jest.fn().mockImplementation((event: string, handler: any) => {
+            if (event === 'error') {
+                // Simulate a hash error event
+                setTimeout(() => handler(new Error('Hash calculation failed')), 0);
+            }
+            return mockHash;
+        });
+
+        const mockHash: MockedHash = {
+            update: mockHashUpdate,
+            digest: mockHashDigest,
+            on: mockHashOn
+        };
+
+        (crypto.createHash as jest.Mock).mockReturnValue(mockHash);
+
+        // Execute function and expect it to reject with error
+        await expect(calculateFileHashStreaming(filePath))
+            .rejects.toThrow(`Failed to read file ${filePath}: Hash calculation failed`);
     });
 });

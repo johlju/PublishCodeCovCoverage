@@ -64,7 +64,7 @@ export async function verifyFileChecksum(filePath: string, checksumFilePath: str
  * @param filePath Path to the file to hash
  * @returns Promise that resolves with the lowercase hex digest of the hash
  */
-function calculateFileHashStreaming(filePath: string): Promise<string> {
+export function calculateFileHashStreaming(filePath: string): Promise<string> {
     return new Promise((resolve, reject) => {
         try {
             // Create a read stream from the file
