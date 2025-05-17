@@ -9,7 +9,8 @@ Before using this extension, ensure you have the following:
 - An Azure DevOps account
 - A Codecov.io account
 - A Codecov token from Codecov.io
-- Azure DevOps agent running Linux (Ubuntu/Debian recommended); Windows and macOS agents are not currently supported as the task uses Linux-specific CLI tools
+- Azure DevOps agent running Linux (Ubuntu/Debian recommended)
+- Windows and macOS agents are not currently supported as the task uses Linux-specific CLI tools
 - Node.js 20 or later
 
 ## Installation
