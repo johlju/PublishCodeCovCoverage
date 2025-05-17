@@ -118,7 +118,7 @@ steps:
     codecovToken: $(MY_SECRET_TOKEN) # reference a pipeline variable or add the token as string
 ```
 
-This example demonstrates passing the Codecov token directly as an input parameter instead of as an environment variable. Using the `codecovToken` input parameter provides an alternative way to supply the token. This approach will override any token set in the environment variable and will also remove the environment variable when the task exits.
+This example re-uses the directory upload scenario from previous examples but passes the token via the `codecovToken` input parameter instead of using an environment variable. This approach will override any token set in the environment variable and will also remove the environment variable when the task exits.
 
 ## How it works
 
