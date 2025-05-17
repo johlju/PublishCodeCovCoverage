@@ -2,6 +2,7 @@ import * as tl from 'azure-pipelines-task-lib/task';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
+import * as crypto from 'crypto';
 import { execFileSync } from 'node:child_process';
 
 // Variable to track if we set the CODECOV_TOKEN
@@ -117,7 +118,7 @@ export async function run(): Promise<void> {
 
         console.log('Verifying Codecov CLI...');
         execFileSync('gpg', ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'], { stdio: 'inherit' });
-        execFileSync('shasum', ['-a', '256', '-c', 'codecov.SHA256SUM'], { stdio: 'inherit' });
+        verifyFileChecksum('codecov', 'codecov.SHA256SUM');
         fs.chmodSync('codecov', '755');
 
         // Check if coverage file exists
@@ -247,6 +248,49 @@ function quoteCommandArgument(arg: string): string {
     const escaped = arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     // Wrap in quotes
     return `"${escaped}"`;
+}
+
+/**
+ * Verifies a file's SHA-256 checksum against an expected value from a checksum file
+ * Cross-platform alternative to shasum -a 256 -c <checksum_file>
+ *
+ * @param filePath Path to the file to verify
+ * @param checksumFilePath Path to the file containing checksums in format: "<hash> <filename>"
+ * @returns true if verification passed, throws error otherwise
+ */
+function verifyFileChecksum(filePath: string, checksumFilePath: string): boolean {
+    console.log(`Verifying SHA-256 checksum for ${filePath} using Node.js crypto module`);
+
+    // Read the checksum file content
+    const checksumFileContent = fs.readFileSync(checksumFilePath, 'utf8');
+
+    // Parse the checksum file - format is typically: "<hash> <filename>"
+    // Find the line that contains our filename (file basename)
+    const fileName = path.basename(filePath);
+    const checksumLine = checksumFileContent
+        .split('\n')
+        .find(line => line.includes(fileName));
+
+    if (!checksumLine) {
+        throw new Error(`Checksum not found for ${fileName} in ${checksumFilePath}`);
+    }
+
+    // Extract expected hash - typically first part of the line
+    const expectedHash = checksumLine.trim().split(/\s+/)[0].toLowerCase();
+
+    // Calculate actual hash
+    const fileBuffer = fs.readFileSync(filePath);
+    const hashSum = crypto.createHash('sha256');
+    hashSum.update(fileBuffer);
+    const actualHash = hashSum.digest('hex').toLowerCase();
+
+    // Compare hashes
+    if (actualHash !== expectedHash) {
+        throw new Error(`SHA-256 checksum verification failed for ${filePath}:\nExpected: ${expectedHash}\nActual: ${actualHash}`);
+    }
+
+    console.log(`SHA-256 checksum verified for ${filePath}`);
+    return true;
 }
 
 // Define the error handler for unhandled rejections
