@@ -135,6 +135,6 @@ describe('webUtils', () => {
       const result = downloadFile('https://example.com/file', '/tmp/download');
       expect(result).toBeInstanceOf(Promise);
       await result;
-    }, 10000);
+    }, 1000);
   });
 });
