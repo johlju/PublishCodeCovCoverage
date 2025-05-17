@@ -1,9 +1,9 @@
-import * as fs from 'fs';
-import * as https from 'https';
+import * as fs from 'node:fs';
+import * as https from 'node:https';
 import { downloadFile } from '../utils/webUtils';
 
-jest.mock('fs');
-jest.mock('https');
+jest.mock('node:fs');
+jest.mock('node:https');
 
 describe('webUtils', () => {
   beforeEach(() => {

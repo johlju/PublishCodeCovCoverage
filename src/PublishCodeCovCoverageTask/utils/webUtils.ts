@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as https from 'https';
+import * as fs from 'node:fs';
+import * as https from 'node:https';
 
 /**
  * Downloads a file from a URL to a local destination
