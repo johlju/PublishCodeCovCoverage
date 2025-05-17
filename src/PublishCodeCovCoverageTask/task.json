@@ -5,7 +5,7 @@
     "description": "Uploads code coverage reports to Codecov.io",
     "helpMarkDown": "",
     "category": "Utility",
-    "author": "Your Name",
+    "author": "Viscalyx",
     "version": {
         "Major": 1,
         "Minor": 0,
@@ -44,6 +44,14 @@
             "defaultValue": "",
             "required": false,
             "helpMarkDown": "Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified."
+        },
+        {
+            "name": "codecovToken",
+            "type": "string",
+            "label": "Codecov Token",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "The token for uploading coverage to Codecov.io. If not provided, it will look for the CODECOV_TOKEN environment variable."
         }
     ],
     "execution": {
