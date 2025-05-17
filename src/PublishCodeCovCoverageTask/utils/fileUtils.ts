@@ -17,11 +17,16 @@ export function verifyFileChecksum(filePath: string, checksumFilePath: string): 
     const checksumFileContent = fs.readFileSync(checksumFilePath, 'utf8');
 
     // Parse the checksum file - format is typically: "<hash> <filename>"
-    // Find the line that contains our filename (file basename)
+    // Find the line that contains our exact filename (file basename)
     const fileName = path.basename(filePath);
     const checksumLine = checksumFileContent
         .split('\n')
-        .find(line => line.includes(fileName));
+        .find(line => {
+            // Split by whitespace and check if any part matches the filename exactly
+            const parts = line.trim().split(/\s+/);
+            // The filename is typically the last part after spaces
+            return parts.length > 1 && parts[parts.length - 1] === fileName;
+        });
 
     if (!checksumLine) {
         throw new Error(`Checksum not found for ${fileName} in ${checksumFilePath}`);
