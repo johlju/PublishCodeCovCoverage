@@ -1,14 +1,13 @@
 import * as tl from 'azure-pipelines-task-lib/task';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as https from 'https';
+import * as fs from 'node:fs';
+import * as https from 'node:https';
 import { execFileSync } from 'node:child_process';
 
 // Mock dependencies
 jest.mock('azure-pipelines-task-lib/task');
 jest.mock('node:child_process');
-jest.mock('https');
-jest.mock('fs');
+jest.mock('node:https');
+jest.mock('node:fs');
 jest.mock('../utils/fileUtils', () => ({
   verifyFileChecksum: jest.fn().mockImplementation(() => Promise.resolve())
 }));

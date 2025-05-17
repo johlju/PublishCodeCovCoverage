@@ -1,7 +1,7 @@
 import * as tl from 'azure-pipelines-task-lib/task';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as https from 'https';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import * as https from 'node:https';
 import { execFileSync } from 'node:child_process';
 import { verifyFileChecksum } from './utils/fileUtils';
 
