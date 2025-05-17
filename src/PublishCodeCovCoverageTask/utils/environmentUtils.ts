@@ -1,5 +1,27 @@
 
 /**
+ * @module environmentUtils
+ *
+ * This module is responsible for managing sensitive environment variables used during the
+ * CodeCov coverage publishing process. It provides functionality to safely handle, track,
+ * and clean up security-critical environment variables like CODECOV_TOKEN.
+ *
+ * The module maintains internal state through the `tokenWasSetByTask` variable, which tracks
+ * whether sensitive tokens were set by this task. This state is critical for security as it
+ * ensures that:
+ *
+ * 1. We only remove environment variables that were explicitly set by our task, not ones
+ *    that might have been present in the environment beforehand
+ * 2. We can reliably clean up sensitive information after task execution, preventing token
+ *    leakage into subsequent pipeline steps
+ * 3. We maintain a clear audit trail of which security-sensitive operations were performed
+ *
+ * This module implements a secure pattern for managing sensitive environment variables in
+ * CI/CD pipelines, where proper cleanup is essential to maintain the principle of least privilege
+ * and prevent accidental exposure of sensitive credentials.
+ */
+
+/**
  * Track if we set the CODECOV_TOKEN
  */
 let tokenWasSetByTask = false;
@@ -27,8 +49,12 @@ export function clearSensitiveEnvironmentVariables(): void {
  * Set the token was set by task flag
  * @param value Boolean indicating whether the token was set by the task
  * @returns void
+ * @throws Error if the value is not a boolean
  */
 export function setTokenWasSetByTask(value: boolean): void {
+    if (typeof value !== 'boolean') {
+        throw new Error('Value for tokenWasSetByTask must be a boolean');
+    }
     tokenWasSetByTask = value;
 }
 
