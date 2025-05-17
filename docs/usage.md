@@ -30,7 +30,7 @@ The task requires the following input parameters:
 
 The recommended approach is to provide your Codecov token via the `codecovToken` input parameter as shown in the examples below.
 
->[!IMPORTANT]: Mark CODECOV_TOKEN as a secret to avoid log exposure. Note that secret pipeline variables are not exposed to pull requests from forks.
+>[!IMPORTANT]: Use secret variables for your Codecov token to prevent accidental exposure in logs. When using the `codecovToken` input parameter, define a secret pipeline variable and reference it like this: `codecovToken: $(MY_SECRET_TOKEN)` where `MY_SECRET_TOKEN` is marked as a "Secret" in the Azure DevOps pipeline variables UI. Note that secret pipeline variables are not exposed to pull requests from forks.
 
 ## Examples
 
@@ -130,7 +130,7 @@ The task performs the following steps:
 
 If the task fails, check the following:
 
-- Ensure the `CODECOV_TOKEN` environment variable or `codecovToken` input parameter is set correctly with your Codecov token.
+- Ensure the `codecovToken` input parameter (preferred) or the `CODECOV_TOKEN` environment variable is set correctly with your Codecov token.
 - Verify the coverage file exists at the specified path.
 - Check if the coverage file is one of the supported coverage formats (JaCoCo, lcov, etc.).
 - Make sure the network root folder is set correctly if you are using it to fix path mapping issues.
