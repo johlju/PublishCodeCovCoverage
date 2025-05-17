@@ -8,13 +8,18 @@ import * as crypto from 'node:crypto';
  *
  * @param filePath Path to the file to verify
  * @param checksumFilePath Path to the file containing checksums in format: "<hash> <filename>"
- * @returns true if verification passed, throws error otherwise
+ * @throws Error if verification fails, file not found, or other I/O errors occur
  */
-export function verifyFileChecksum(filePath: string, checksumFilePath: string): boolean {
+export function verifyFileChecksum(filePath: string, checksumFilePath: string): void {
     console.log(`Verifying SHA-256 checksum for ${filePath} using Node.js crypto module`);
 
-    // Read the checksum file content
-    const checksumFileContent = fs.readFileSync(checksumFilePath, 'utf8');
+    let checksumFileContent: string;
+    try {
+        // Read the checksum file content
+        checksumFileContent = fs.readFileSync(checksumFilePath, 'utf8');
+    } catch (error) {
+        throw new Error(`Failed to read checksum file ${checksumFilePath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
     // Parse the checksum file - format is typically: "<hash> <filename>"
     // Find the line that contains our exact filename (file basename)
@@ -35,8 +40,14 @@ export function verifyFileChecksum(filePath: string, checksumFilePath: string): 
     // Extract expected hash - typically first part of the line
     const expectedHash = checksumLine.trim().split(/\s+/)[0].toLowerCase();
 
-    // Calculate actual hash
-    const fileBuffer = fs.readFileSync(filePath);
+    let fileBuffer: Buffer;
+    try {
+        // Calculate actual hash
+        fileBuffer = fs.readFileSync(filePath);
+    } catch (error) {
+        throw new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
     const hashSum = crypto.createHash('sha256');
     hashSum.update(fileBuffer);
     const actualHash = hashSum.digest('hex').toLowerCase();
@@ -47,5 +58,4 @@ export function verifyFileChecksum(filePath: string, checksumFilePath: string): 
     }
 
     console.log(`SHA-256 checksum verified for ${filePath}`);
-    return true;
 }
