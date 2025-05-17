@@ -6,6 +6,7 @@ import { verifyFileChecksum } from './utils/fileUtils';
 import { quoteCommandArgument } from './utils/commandUtils';
 import { clearSensitiveEnvironmentVariables, setTokenWasSetByTask } from './utils/environmentUtils';
 import { downloadFile } from './utils/webUtils';
+import { handleUnhandledError } from './utils/errorUtils';
 
 export async function run(): Promise<void> {
     try {
@@ -197,14 +198,7 @@ export async function run(): Promise<void> {
 // The quoteCommandArgument function has been moved to ./utils/commandUtils.ts
 
 // The verifyFileChecksum function has been moved to ./utils/fileUtils.ts
-
-// Define the error handler for unhandled rejections
-function handleUnhandledError(err: Error): void {
-    console.error('Unhandled error:', err);
-    // Clear sensitive environment variables on unhandled errors
-    clearSensitiveEnvironmentVariables();
-    tl.setResult(tl.TaskResult.Failed, `Unhandled error: ${err.message}`);
-}
+// The handleUnhandledError function has been moved to ./utils/errorUtils.ts
 
 // Execute the task
 run().catch(handleUnhandledError);
