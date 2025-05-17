@@ -87,11 +87,14 @@ export function calculateFileHashStreaming(filePath: string): Promise<string> {
                 reject(new Error(`Failed to read file ${filePath}: ${error.message}`));
             });
 
-            if (hashSum.on) {
-                hashSum.on('error', (error) => {
-                    reject(new Error(`Hash calculation error: ${error.message}`));
-                });
-            }
+            // // Check if 'on' method exists on hashSum for compatibility
+            // // Some Node.js versions or crypto implementations may not support the 'on' event method
+            // // This conditional ensures the code works across different environments
+            // if (hashSum.on) {
+            //     hashSum.on('error', (error) => {
+            //         reject(new Error(`Hash calculation error: ${error.message}`));
+            //     });
+            // }
 
             fileStream.on('data', (chunk) => {
                 hashSum.update(chunk);
