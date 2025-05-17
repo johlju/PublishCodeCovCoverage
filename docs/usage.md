@@ -45,7 +45,7 @@ steps:
     coverageFileName: 'output/testResults/JaCoCo_coverage.xml'
     verbose: true
   env:
-    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
+    CODECOV_TOKEN: $(MY_SECRET_TOKEN) # reference a pipeline variable or add the token as string
 ```
 
 ### Example 2: Upload by directory (without specifying file)
@@ -58,7 +58,7 @@ steps:
     testResultFolderName: '$(Build.SourcesDirectory)/coverage'
     verbose: true
   env:
-    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
+    CODECOV_TOKEN: $(MY_SECRET_TOKEN) # reference a pipeline variable or add the token as string
 ```
 
 ### Example 3: Using network root folder to fix path mapping issues
@@ -72,7 +72,7 @@ steps:
     networkRootFolder: 'src'
     verbose: true
   env:
-    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
+    CODECOV_TOKEN: $(MY_SECRET_TOKEN) # reference a pipeline variable or add the token as string
 ```
 
 This example uses the `networkRootFolder` parameter to help Codecov.io correctly map file paths in the coverage report to your repository structure. This is particularly useful when you encounter "Unusable report due to source code unavailability" or "path mismatch" errors.
@@ -86,7 +86,7 @@ steps:
   inputs:
     testResultFolderName: '$(Build.SourcesDirectory)/output/testResults'
   env:
-    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
+    CODECOV_TOKEN: $(MY_SECRET_TOKEN) # reference a pipeline variable or add the token as string
 ```
 
 ### Example 5: Upload by directory (specifying file)
@@ -99,7 +99,7 @@ steps:
     testResultFolderName: '$(Build.SourcesDirectory)/output/testResults'
     coverageFileName: 'JaCoCo_coverage.xml'
   env:
-    CODECOV_TOKEN: 'YOUR_CODECOV_TOKEN_HERE'
+    CODECOV_TOKEN: $(MY_SECRET_TOKEN) # reference a pipeline variable or add the token as string
 ```
 
 ### Example 6: Using codecovToken input parameter instead of environment variable
@@ -110,10 +110,11 @@ steps:
   displayName: 'Upload coverage to Codecov.io with token input'
   inputs:
     testResultFolderName: '$(Build.SourcesDirectory)/coverage'
-    codecovToken: 'YOUR_CODECOV_TOKEN_HERE'
+    codecovToken: $(MY_SECRET_TOKEN) # reference a pipeline variable or add the token as string
 ```
 
-In this example, the Codecov token is passed directly as an input parameter instead of as an environment variable. This provides an alternative way to supply the token when needed. Replace 'YOUR_CODECOV_TOKEN_HERE' with your actual Codecov token.
+In this example, the Codecov token is passed directly as an input parameter instead of as an environment variable. This provides an alternative way to supply the token when needed. This will also override
+any token set in the environment variable, and also remove the environment variable when the task exits.
 
 ## How it works
 
@@ -123,7 +124,7 @@ The task performs the following steps:
 2. Verifies the CLI using PGP keys and SHA256 checksums.
 3. Uploads coverage to Codecov.io in one of two ways:
    - If `coverageFileName` is provided and exists, uses the `-f` parameter to upload the specific file
-   - If `coverageFileName` is not provided, uses the `-s` parameter with `testResultFolderName` to upload all coverage from the directory
+   - If `coverageFileName` is not provided, uses the `-s` parameter with `testResultFolderName` to upload all supported coverage from the directory
 
 ## Troubleshooting
 
@@ -131,7 +132,10 @@ If the task fails, check the following:
 
 - Ensure the `CODECOV_TOKEN` environment variable or `codecovToken` input parameter is set correctly with your Codecov token.
 - Verify the coverage file exists at the specified path.
-- Check if the coverage file is in a supported format (XML, JSON, etc.).
+- Check if the coverage file is one of the supported coverage formats (JaCoCo, lcov, etc.).
+- Make sure the network root folder is set correctly if you are using it to fix path mapping issues.
+- Make sure you have a codecov.yml in your project root directory to configure the Codecov uploader. This file is optional but can help with configuration and settings for the upload process.
+- Check the logs for any error messages or warnings that can help identify the issue.
 
 ## Support
 
