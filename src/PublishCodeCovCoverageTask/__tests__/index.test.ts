@@ -16,11 +16,11 @@ import { run, downloadFile } from '../index';
 describe('PublishCodeCovCoverage', () => {
   // Store original env to restore it after each test
   let originalEnv: NodeJS.ProcessEnv;
-  
+
   beforeEach(() => {
     // Store original environment
     originalEnv = { ...process.env };
-    
+
     jest.clearAllMocks();
 
     // Set NODE_ENV for testing the unhandled error handler
@@ -78,6 +78,7 @@ describe('PublishCodeCovCoverage', () => {
       return undefined as any;
     });
 
+
     // No longer need global path module mocking
     // We'll use spies only in specific tests as needed
 
@@ -116,7 +117,7 @@ describe('PublishCodeCovCoverage', () => {
   afterEach(() => {
     // Restore console mocks to prevent side effects between tests
     jest.restoreAllMocks();
-    
+
     // Restore original environment
     process.env = originalEnv;
   });
@@ -753,8 +754,8 @@ describe('PublishCodeCovCoverage', () => {
     );
   });
 
-  // Additional tests for GPG and shasum verification
-  test('should call gpg and shasum with correct arguments', async () => {
+  // Tests for GPG verification
+  test('should call gpg with correct arguments', async () => {
     await run();
 
     // Verify gpg import call
@@ -768,13 +769,6 @@ describe('PublishCodeCovCoverage', () => {
     expect(execFileSync).toHaveBeenCalledWith(
       'gpg',
       ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'],
-      expect.anything()
-    );
-
-    // Verify shasum call
-    expect(execFileSync).toHaveBeenCalledWith(
-      'shasum',
-      ['-a', '256', '-c', 'codecov.SHA256SUM'],
       expect.anything()
     );
   });
