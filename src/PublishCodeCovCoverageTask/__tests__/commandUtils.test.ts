@@ -36,5 +36,11 @@ describe('commandUtils', () => {
       const result = quoteCommandArgument('C:\\Users\\username\\Documents\\');
       expect(result).toBe('"C:\\\\Users\\\\username\\\\Documents\\\\"');
     });
+
+    test('should correctly handle complex string with quotes, backslashes, and special characters', () => {
+      const complexString = 'C:\\Program Files\\App "Name"\\config$file-v1.2@~!.txt';
+      const result = quoteCommandArgument(complexString);
+      expect(result).toBe('"C:\\\\Program Files\\\\App \\"Name\\"\\\\config$file-v1.2@~!.txt"');
+    });
   });
 });
