@@ -11,9 +11,10 @@ jest.mock('node:fs');
 jest.mock('../utils/fileUtils', () => ({
   verifyFileChecksum: jest.fn().mockImplementation(() => Promise.resolve())
 }));
+jest.mock('../utils/webUtils');
 
 // Import functions after mocking dependencies
-import { run, downloadFile } from '../index';
+import { run } from '../index';
 // Get reference to the mocked verifyFileChecksum
 import { verifyFileChecksum } from '../utils/fileUtils';
 import { setTokenWasSetByTask } from '../utils/environmentUtils';
@@ -169,6 +170,12 @@ describe('PublishCodeCovCoverage', () => {
       on: jest.fn()
     };
 
+    // Import the module to mock
+    const webUtils = require('../utils/webUtils');
+    // Mock the downloadFile function to throw an error for HTTP issues
+    jest.spyOn(webUtils, 'downloadFile').mockRejectedValueOnce(new Error('Failed to get (404)'));
+
+    // We still need the original https.get mock for other parts of the code
     (https.get as jest.Mock).mockImplementation((url, callback) => {
       callback(mockErrorResponse);
       return { on: jest.fn() };
@@ -195,6 +202,11 @@ describe('PublishCodeCovCoverage', () => {
 
     (https.get as jest.Mock).mockReturnValue(mockRequest);
 
+    // Import the module to mock
+    const webUtils = require('../utils/webUtils');
+    // Mock the downloadFile function to throw a network error
+    jest.spyOn(webUtils, 'downloadFile').mockRejectedValueOnce(new Error('Network error'));
+
     await run();
 
     expect(tl.setResult).toHaveBeenCalledWith(
@@ -203,48 +215,7 @@ describe('PublishCodeCovCoverage', () => {
     );
   });
 
-  test('downloadFile function should return a promise', async () => {
-    const promise = downloadFile('https://example.com/file', 'dest-file');
-    expect(promise).toBeInstanceOf(Promise);
-    await promise;
-  });
-
-  test('downloadFile function should handle HTTP error status codes', async () => {
-    // Setup HTTPS mock with error response
-    const mockErrorResponse = {
-      statusCode: 404,
-      pipe: jest.fn(),
-      on: jest.fn()
-    };
-
-    (https.get as jest.Mock).mockImplementation((url, callback) => {
-      callback(mockErrorResponse);
-      return { on: jest.fn() };
-    });
-
-    await expect(downloadFile('https://example.com/file', 'dest-file'))
-      .rejects
-      .toThrow('Failed to get');
-  });
-
-  test('downloadFile function should handle file write error', async () => {
-    // Mock file write error
-    const mockErrorStream = {
-      on: jest.fn().mockImplementation((event, handler) => {
-        if (event === 'error') {
-          setTimeout(() => handler(new Error('File write error')), 0);
-        }
-        return mockErrorStream;
-      }),
-      close: jest.fn()
-    };
-
-    (fs.createWriteStream as jest.Mock).mockReturnValue(mockErrorStream);
-
-    await expect(downloadFile('https://example.com/file', 'dest-file'))
-      .rejects
-      .toThrow('File write error');
-  });
+  // downloadFile tests have been moved to webUtils.test.ts
 
   test('should handle localization file not found', async () => {
     // Mock task.json not existing
