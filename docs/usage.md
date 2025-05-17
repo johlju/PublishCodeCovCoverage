@@ -22,7 +22,7 @@ The task requires the following input parameters:
 |-----------|-------------|----------|
 | testResultFolderName | The path to the test result folder containing the code coverage report | Yes |
 | coverageFileName | The name of the coverage file (e.g., 'coverage.xml'). If specified, argument -f will be used with this file. If not specified, argument -s will be used with the test result folder path. | No |
-| codecovToken | The token for uploading coverage to Codecov.io. If not provided, it will look for the CODECOV_TOKEN environment variable or pipeline variable. | No |
+| codecovToken | The token for uploading coverage to Codecov.io. Takes precedence over the CODECOV_TOKEN environment or pipeline variable.| No |
 | networkRootFolder | Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified. | No |
 | verbose | Enable verbose output for the Codecov uploader | No |
 
