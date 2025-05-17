@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 
 /**
  * Verifies a file's SHA-256 checksum against an expected value from a checksum file
