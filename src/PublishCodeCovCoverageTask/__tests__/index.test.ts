@@ -10,7 +10,7 @@ jest.mock('node:child_process');
 jest.mock('https');
 jest.mock('fs');
 jest.mock('../utils/fileUtils', () => ({
-  verifyFileChecksum: jest.fn().mockReturnValue(true)
+  verifyFileChecksum: jest.fn().mockImplementation(() => {})
 }));
 
 // Import functions after mocking dependencies
@@ -780,7 +780,7 @@ describe('PublishCodeCovCoverage', () => {
 
   test('should verify file checksum using the mocked function', async () => {
     await run();
-    
+
     // Verify that verifyFileChecksum was called with the correct parameters
     expect(verifyFileChecksum).toHaveBeenCalledWith('codecov', 'codecov.SHA256SUM');
   });
