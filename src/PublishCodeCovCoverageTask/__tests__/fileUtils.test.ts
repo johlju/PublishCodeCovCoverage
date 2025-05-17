@@ -292,6 +292,66 @@ describe('verifyFileChecksum', () => {
         await expect(verifyFileChecksum(filePath, checksumFilePath))
             .rejects.toThrow(`Failed to verify checksum for ${filePath}: Failed to read file ${filePath}: Hash calculation failed`);
     });
+
+    it('should use the provided logger function', async () => {
+        // Mock file path and checksum file path
+        const filePath = '/path/to/file.txt';
+        const checksumFilePath = '/path/to/checksums.txt';
+
+        // Mock path.basename to return the filename
+        (path.basename as jest.Mock).mockReturnValue('file.txt');
+
+        // Mock fs.readFileSync for the checksum file
+        (fs.readFileSync as jest.Mock).mockImplementation((path: string, encoding?: string) => {
+            if (path === checksumFilePath && encoding === 'utf8') {
+                return 'abcdef1234567890 file.txt';
+            }
+            return Buffer.from('file content');
+        });
+
+        // Mock createReadStream
+        const mockStreamOn = jest.fn((event: string, handler: any) => {
+            if (event === 'data') {
+                // Simulate a data event with the file content
+                handler(Buffer.from('file content'));
+            }
+            if (event === 'end') {
+                // Simulate the end event
+                setTimeout(() => handler(), 0);
+            }
+            return mockReadStream;
+        });
+
+        const mockReadStream: MockedStream = { on: mockStreamOn };
+        (fs.createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+
+        // Mock crypto hash functions
+        const mockHashUpdate = jest.fn();
+        const mockHashDigest = jest.fn().mockReturnValue('abcdef1234567890');
+        const mockHashOn = jest.fn();
+
+        mockHashUpdate.mockReturnValue({ digest: mockHashDigest, on: mockHashOn });
+        mockHashOn.mockReturnValue({ update: mockHashUpdate, digest: mockHashDigest });
+
+        const mockHash: MockedHash = {
+            update: mockHashUpdate,
+            digest: mockHashDigest,
+            on: mockHashOn
+        };
+
+        (crypto.createHash as jest.Mock).mockReturnValue(mockHash);
+
+        // Create a mock logger function
+        const mockLogger = jest.fn();
+
+        // Execute function with the mock logger
+        await verifyFileChecksum(filePath, checksumFilePath, mockLogger);
+
+        // Verify that the logger was called with the expected messages
+        expect(mockLogger).toHaveBeenCalledTimes(2);
+        expect(mockLogger).toHaveBeenNthCalledWith(1, `Verifying SHA-256 checksum for ${filePath} using Node.js crypto module`);
+        expect(mockLogger).toHaveBeenNthCalledWith(2, `SHA-256 checksum verified for ${filePath}`);
+    });
 });
 
 describe('calculateFileHashStreaming', () => {

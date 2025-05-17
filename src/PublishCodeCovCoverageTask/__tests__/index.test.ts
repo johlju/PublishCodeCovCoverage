@@ -779,9 +779,7 @@ describe('PublishCodeCovCoverage', () => {
   });
 
   test('should verify file checksum using the mocked function', async () => {
-    await run();
-
-    // Verify that verifyFileChecksum was called with the correct parameters
-    expect(verifyFileChecksum).toHaveBeenCalledWith('codecov', 'codecov.SHA256SUM');
+    await run();    // Verify that verifyFileChecksum was called with the correct parameters
+    expect(verifyFileChecksum).toHaveBeenCalledWith('codecov', 'codecov.SHA256SUM', console.log);
   });
 });

@@ -7,13 +7,24 @@ import * as crypto from 'node:crypto';
  * Cross-platform alternative to shasum -a 256 -c <checksum_file>
  * Uses streaming approach to handle large files efficiently
  *
+ * The function supports configurable logging through the optional logger parameter,
+ * allowing it to be used in different contexts:
+ * - Without logging: await verifyFileChecksum(filePath, checksumFilePath);
+ * - With console logging: await verifyFileChecksum(filePath, checksumFilePath, console.log);
+ * - With custom logging: await verifyFileChecksum(filePath, checksumFilePath, (msg) => myLogger.info(msg));
+ *
  * @param filePath Path to the file to verify
  * @param checksumFilePath Path to the file containing checksums in format: "<hash> <filename>"
+ * @param logger Optional function for logging messages (defaults to no logging if not provided)
  * @returns Promise that resolves when verification completes, rejects on error
  * @throws Error if verification fails, file not found, or other I/O errors occur
  */
-export async function verifyFileChecksum(filePath: string, checksumFilePath: string): Promise<void> {
-    console.log(`Verifying SHA-256 checksum for ${filePath} using Node.js crypto module`);
+export async function verifyFileChecksum(
+    filePath: string,
+    checksumFilePath: string,
+    logger: (message: string) => void = () => {}
+): Promise<void> {
+    logger(`Verifying SHA-256 checksum for ${filePath} using Node.js crypto module`);
 
     let checksumFileContent: string;
     try {
@@ -51,7 +62,7 @@ export async function verifyFileChecksum(filePath: string, checksumFilePath: str
             throw new Error(`SHA-256 checksum verification failed for ${filePath}:\nExpected: ${expectedHash}\nActual: ${actualHash}`);
         }
 
-        console.log(`SHA-256 checksum verified for ${filePath}`);
+        logger(`SHA-256 checksum verified for ${filePath}`);
     } catch (error) {
         throw new Error(`Failed to verify checksum for ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
     }
