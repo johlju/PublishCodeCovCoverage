@@ -508,20 +508,20 @@ describe('webUtils', () => {
 
         // Apply the mock
         jest.spyOn(require('../utils/webUtils'), 'downloadFile').mockImplementation(mockDownloadFile);
-        
+
         try {
             // Call with our mock signal
             await downloadFile('https://example.com/file', '/tmp/download', {
                 signal: {} as AbortSignal
             });
-            
+
             // If we get here, the test should fail
             throw new Error('Expected the download to be aborted');
         } catch (error) {
             // Verify the error message
             expect((error as Error).message).toContain('Download aborted by user');
         }
-        
+
         // Return the original implementation
         jest.spyOn(require('../utils/webUtils'), 'downloadFile').mockImplementation(originalDownloadFile);
     }, 10000);    test('should reject immediately if AbortSignal is already aborted', async () => {
@@ -538,28 +538,28 @@ describe('webUtils', () => {
 
         // Apply the mock
         jest.spyOn(require('../utils/webUtils'), 'downloadFile').mockImplementation(mockDownloadFile);
-        
+
         // Create an already aborted mock signal
         const mockSignal = {
             aborted: true // Already aborted
         };
-        
+
         try {
             // Call the function with the aborted signal
             await downloadFile('https://example.com/file', '/tmp/download', {
                 signal: mockSignal as unknown as AbortSignal
             });
-            
+
             // Should never reach here
             throw new Error('Expected function to throw for aborted signal');
         } catch (error) {
             // Verify error message
             expect((error as Error).message).toContain('Download aborted: https://example.com/file');
         }
-        
+
         // Restore original implementation
         jest.spyOn(require('../utils/webUtils'), 'downloadFile').mockImplementation(originalDownloadFile);
-        
+
         // No network request should be made
         expect(https.get).not.toHaveBeenCalled();
         expect(fs.createWriteStream).not.toHaveBeenCalled();
@@ -598,7 +598,7 @@ describe('webUtils', () => {
 
         // Create an AbortController
         const controller = new AbortController();
-        
+
         try {
             // Call the function with the abort signal
             await downloadFile('https://example.com/file', '/tmp/download', {
@@ -619,21 +619,21 @@ describe('webUtils', () => {
     });    test('should properly clean up AbortSignal event listener when download finishes', async () => {
         // Instead of testing the actual implementation, we'll mock the AbortController/Signal API
         // and test that our implementation interacts with it correctly
-        
+
         // Create direct mock implementations for WebUtils' downloadFile
         const originalDownloadFile = require('../utils/webUtils').downloadFile;
 
         // Create a spy for the addEventListener and removeEventListener functions
         const addEventListenerSpy = jest.fn();
         const removeEventListenerSpy = jest.fn();
-        
+
         // Mock implementation verifying the signal handlers are properly added and removed
         const mockDownloadFile = jest.fn().mockImplementation((fileUrl, dest, options = {}) => {
             if (options.signal) {
                 // Simulate adding the event listener
                 const handlerFn = () => {}; // Dummy handler function
                 addEventListenerSpy('abort', handlerFn);
-                
+
                 // Return a promise that resolves but simulates cleanup
                 return new Promise((resolve) => {
                     setTimeout(() => {
@@ -645,26 +645,26 @@ describe('webUtils', () => {
             }
             return Promise.resolve();
         });
-        
+
         // Apply the mock implementation
         jest.spyOn(require('../utils/webUtils'), 'downloadFile').mockImplementation(mockDownloadFile);
-        
+
         // Create a mock signal
         const mockSignal = {
             aborted: false,
             addEventListener: addEventListenerSpy,
             removeEventListener: removeEventListenerSpy
         };
-        
+
         // Call the download function with our mock
         await downloadFile('https://example.com/file', '/tmp/download', {
             signal: mockSignal as unknown as AbortSignal
         });
-        
+
         // Verify the event listeners were properly added and removed
         expect(addEventListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function));
         expect(removeEventListenerSpy).toHaveBeenCalledWith('abort', expect.any(Function));
-        
+
         // Restore original implementation
         jest.spyOn(require('../utils/webUtils'), 'downloadFile').mockImplementation(originalDownloadFile);
     }, 10000);
