@@ -129,9 +129,11 @@ export async function downloadFile(
                 });
                 return;
             }            // Get the total file size from the response headers
-            const totalBytes = parseInt(response.headers && response.headers['content-length'] || '', 10);
+            const totalBytes = Number.parseInt(response.headers?.['content-length'] || '', 10);
 
-            let bytesReceived = 0;            // Set up progress tracking
+            let bytesReceived = 0;
+
+            // Set up progress tracking
             if (onProgress && typeof response.on === 'function') {
                 if (!isNaN(totalBytes)) {
                     console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
