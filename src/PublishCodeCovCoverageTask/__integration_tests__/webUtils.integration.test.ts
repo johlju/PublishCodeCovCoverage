@@ -14,7 +14,7 @@ describe('webUtils - Integration Tests', () => {
     // Setup a temp directory for downloads
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'webutils-test-'));
     const testFilePath = path.join(tempDir, 'test-download.txt');
-    
+
     // Server instance that will be created before tests
     let server: any;
 
@@ -29,7 +29,7 @@ describe('webUtils - Integration Tests', () => {
         if (server) {
             server.close();
         }
-        
+
         try {
             if (fs.existsSync(testFilePath)) {
                 fs.unlinkSync(testFilePath);
@@ -44,7 +44,7 @@ describe('webUtils - Integration Tests', () => {
         test('should download a file and report progress', async () => {
             // Use our local test server
             const testUrl = server.url;
-            
+
             // Array to store progress updates
             const progressUpdates: Array<{
                 bytesReceived: number;
@@ -68,18 +68,20 @@ describe('webUtils - Integration Tests', () => {
             // The integration test focuses on the download completing without errors
             console.log(`File downloaded to ${testFilePath}`);
             console.log(`Received ${progressUpdates.length} progress updates`);
-            console.log(`Last progress update: ${progressUpdates[progressUpdates.length - 1].percent}%`);
-            
+            if (progressUpdates.length > 0) {
+                console.log(`Last progress update: ${progressUpdates[progressUpdates.length - 1].percent}%`);
+            }
+
             // Minimal validation just to ensure the file was created
             if (!fs.existsSync(testFilePath)) {
                 throw new Error('Download failed: File does not exist');
             }
         }, 30000); // Allow up to 30 seconds for the download
-        
+
         test('should handle downloads with AbortSignal', async () => {
             // Use our local test server
             const testUrl = server.url;
-            
+
             // Create abort controller
             const abortController = new AbortController();
             const progressUpdates: Array<{
@@ -87,7 +89,7 @@ describe('webUtils - Integration Tests', () => {
                 totalBytes: number | null;
                 percent: number | null;
             }> = [];
-            
+
             // Start the download
             const downloadPromise = downloadFile(
                 testUrl,
@@ -97,7 +99,7 @@ describe('webUtils - Integration Tests', () => {
                     onProgress: (progress) => {
                         progressUpdates.push({...progress});
                         console.log(`Progress before abort: ${progress.percent}% (${progress.bytesReceived}/${progress.totalBytes} bytes)`);
-                        
+
                         // Abort after receiving some data but before completion
                         if (progress.bytesReceived > 1000 && progress.percent !== null && progress.percent < 90) {
                             console.log('Aborting download...');
@@ -106,7 +108,7 @@ describe('webUtils - Integration Tests', () => {
                     }
                 }
             );
-            
+
             try {
                 // This should throw an error due to the abort
                 await downloadPromise;
@@ -114,13 +116,13 @@ describe('webUtils - Integration Tests', () => {
             } catch (error: any) {
                 // Just log that we received the expected abort error
                 console.log(`Received abort error: ${error.message}`);
-                
+
                 // Log progress captured before abort
                 console.log(`Received ${progressUpdates.length} progress updates before abort`);
                 if (progressUpdates.length > 0) {
                     console.log(`Last progress update before abort: ${progressUpdates[progressUpdates.length - 1].percent}%`);
                 }
-                
+
                 // Add a small delay to allow file cleanup to complete
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
