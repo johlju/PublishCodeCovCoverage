@@ -341,10 +341,9 @@ describe('webUtils', () => {
                 }),
                 close: jest.fn(cb => cb && cb())
             };
-
             // Setup our HTTP get sequence - first call returns redirect, second returns success
             let callCount = 0;
-            let requestedUrls: string[] = [];
+            const requestedUrls: string[] = [];
 
             const httpGetMock = jest.fn().mockImplementation((url, callback) => {
                 requestedUrls.push(String(url));
