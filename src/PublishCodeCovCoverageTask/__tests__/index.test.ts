@@ -127,10 +127,16 @@ describe('PublishCodeCovCoverage', () => {
 
     // Restore original environment
     process.env = originalEnv;
+  });
 
-    // Clean up .taskkey file if it exists
+  afterAll(() => {
+    /**
+     * Clean up .taskkey file if it exists
+     * The azure-pipelines-task-lib creates this file when running tasks,
+     * even in test environments. We remove it to avoid accumulating these files
+     * during test runs and to prevent potential test interference between runs.
+     */
     const taskKeyPath = path.join(process.cwd(), '.taskkey');
-    if ((fs.existsSync as jest.Mock).mock.calls.length === 0) {
       // If fs.existsSync hasn't been mocked for this particular call
       try {
         if (require('fs').existsSync(taskKeyPath)) {
@@ -139,19 +145,6 @@ describe('PublishCodeCovCoverage', () => {
       } catch (error) {
         // Ignore errors during cleanup
       }
-    }
-  });
-
-  afterAll(() => {
-    // Make sure to clean up .taskkey file after all tests
-    try {
-      const taskKeyPath = path.join(process.cwd(), '.taskkey');
-      if (require('fs').existsSync(taskKeyPath)) {
-        require('fs').unlinkSync(taskKeyPath);
-      }
-    } catch (error) {
-      // Ignore errors during cleanup
-    }
   });
 
   test('run function should complete successfully', async () => {
