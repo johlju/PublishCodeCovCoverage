@@ -1,6 +1,7 @@
 import * as tl from 'azure-pipelines-task-lib/task';
 import * as fs from 'node:fs';
 import * as https from 'node:https';
+import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 // Mock dependencies
@@ -126,6 +127,31 @@ describe('PublishCodeCovCoverage', () => {
 
     // Restore original environment
     process.env = originalEnv;
+
+    // Clean up .taskkey file if it exists
+    const taskKeyPath = path.join(process.cwd(), '.taskkey');
+    if ((fs.existsSync as jest.Mock).mock.calls.length === 0) {
+      // If fs.existsSync hasn't been mocked for this particular call
+      try {
+        if (require('fs').existsSync(taskKeyPath)) {
+          require('fs').unlinkSync(taskKeyPath);
+        }
+      } catch (error) {
+        // Ignore errors during cleanup
+      }
+    }
+  });
+
+  afterAll(() => {
+    // Make sure to clean up .taskkey file after all tests
+    try {
+      const taskKeyPath = path.join(process.cwd(), '.taskkey');
+      if (require('fs').existsSync(taskKeyPath)) {
+        require('fs').unlinkSync(taskKeyPath);
+      }
+    } catch (error) {
+      // Ignore errors during cleanup
+    }
   });
 
   test('run function should complete successfully', async () => {
