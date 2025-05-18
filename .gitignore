@@ -20,7 +20,7 @@ pgp_keys.asc
 
 # Coverage reports
 coverage/
-junit.xml
+*junit.xml
 
 # TypeScript cache
 *.tsbuildinfo
