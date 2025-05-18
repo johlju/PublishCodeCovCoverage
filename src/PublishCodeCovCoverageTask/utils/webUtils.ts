@@ -42,7 +42,10 @@ export async function downloadFile(
             if (response.statusCode && [301, 302, 307, 308].includes(response.statusCode)) {
                 // Close the file since we'll be creating a new one for the redirected URL
                 file.close();
-                fs.unlink(dest, () => {
+                fs.unlink(dest, (unlinkErr) => {
+                    if (unlinkErr) {
+                        console.warn(`Warning: Failed to clean up temporary file '${dest}' during redirect: ${unlinkErr.message}`);
+                    }
                     // Get the redirect URL
                     const redirectUrl = response.headers.location;
 
@@ -77,7 +80,10 @@ export async function downloadFile(
             // Handle non-success status codes
             if (response.statusCode !== 200) {
                 file.close();
-                fs.unlink(dest, () => {
+                fs.unlink(dest, (unlinkErr) => {
+                    if (unlinkErr) {
+                        console.warn(`Warning: Failed to clean up temporary file '${dest}' after HTTP error: ${unlinkErr.message}`);
+                    }
                     reject(new Error(`Failed to get '${fileUrl}' (${response.statusCode})`));
                 });
                 return;
@@ -89,7 +95,12 @@ export async function downloadFile(
             file.on('finish', () => {
                 file.close((err) => {
                     if (err) {
-                        fs.unlink(dest, () => reject(err));
+                        fs.unlink(dest, (unlinkErr) => {
+                            if (unlinkErr) {
+                                console.warn(`Warning: Failed to clean up temporary file '${dest}' after file close error: ${unlinkErr.message}`);
+                            }
+                            reject(err);
+                        });
                         return;
                     }
                     console.log(`Downloaded ${fileUrl} successfully`);
@@ -99,20 +110,34 @@ export async function downloadFile(
 
             file.on('error', (err) => {
                 // Clean up file on error
-                fs.unlink(dest, () => reject(err));
+                fs.unlink(dest, (unlinkErr) => {
+                    if (unlinkErr) {
+                        console.warn(`Warning: Failed to clean up temporary file '${dest}' after file stream error: ${unlinkErr.message}`);
+                    }
+                    reject(err);
+                });
             });
-
         }).on('error', (err) => {
             // Clean up file on request error
             file.close();
-            fs.unlink(dest, () => reject(err));
+            fs.unlink(dest, (unlinkErr) => {
+                if (unlinkErr) {
+                    console.warn(`Warning: Failed to clean up temporary file '${dest}' after request error: ${unlinkErr.message}`);
+                }
+                reject(err);
+            });
         });
 
         // Set up timeout to abort the request if it takes too long
         req.setTimeout(timeout, () => {
             req.destroy();
             file.close();
-            fs.unlink(dest, () => reject(new Error(`Request timed out after ${timeout}ms: ${fileUrl}`)));
+            fs.unlink(dest, (unlinkErr) => {
+                if (unlinkErr) {
+                    console.warn(`Warning: Failed to clean up temporary file '${dest}' after request timeout: ${unlinkErr.message}`);
+                }
+                reject(new Error(`Request timed out after ${timeout}ms: ${fileUrl}`));
+            });
         });
     });
 }
