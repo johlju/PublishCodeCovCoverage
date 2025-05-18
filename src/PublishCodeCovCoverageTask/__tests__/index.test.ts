@@ -137,9 +137,8 @@ describe('PublishCodeCovCoverage', () => {
      * during test runs and to prevent potential test interference between runs.
      */
     const taskKeyPath = path.join(process.cwd(), '.taskkey');
-      // If fs.existsSync hasn't been mocked for this particular call
       try {
-        if (require('fs').existsSync(taskKeyPath)) {
+        if (require('node:fs').existsSync(taskKeyPath)) {
           require('fs').unlinkSync(taskKeyPath);
         }
       } catch (error) {
