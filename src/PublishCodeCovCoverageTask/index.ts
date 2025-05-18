@@ -1,28 +1,12 @@
 import * as tl from 'azure-pipelines-task-lib/task';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import * as https from 'node:https';
 import { execFileSync } from 'node:child_process';
 import { verifyFileChecksum } from './utils/fileUtils';
-
-// Variable to track if we set the CODECOV_TOKEN
-let tokenWasSetByTask = false;
-
-// Function to clear sensitive environment variables that were set by this task
-function clearSensitiveEnvironmentVariables(): void {
-    if (tokenWasSetByTask && process.env.CODECOV_TOKEN) {
-        console.log('Removing CODECOV_TOKEN environment variable for security');
-        // Using delete instead of setting to empty string ('') because:
-        // 1. It completely removes the variable from process.env rather than leaving it with an empty value
-        // 2. It's better for security to remove all traces of sensitive variables
-        // 3. It resets the environment to its original state if the variable wasn't present before
-        // 4. An empty string might still be processed differently than a non-existent variable by some APIs
-        // Note: Using 'delete' on process.env properties can cause de-optimization of the process.env object in Node.js
-        // as it converts it from a hidden class to a dictionary mode. This is a conscious security vs. performance
-        // trade-off, where we prioritize security by fully removing sensitive data over slight performance implications.
-        delete process.env.CODECOV_TOKEN;
-    }
-}
+import { quoteCommandArgument } from './utils/commandUtils';
+import { clearSensitiveEnvironmentVariables, setTokenWasSetByTask } from './utils/environmentUtils';
+import { downloadFile } from './utils/webUtils';
+import { handleUnhandledError } from './utils/errorUtils';
 
 export async function run(): Promise<void> {
     try {
@@ -58,11 +42,11 @@ export async function run(): Promise<void> {
 
             if (!existingToken) {
                 process.env.CODECOV_TOKEN = codecovToken;
-                tokenWasSetByTask = true;
+                setTokenWasSetByTask(true);
                 console.log('Environment variable CODECOV_TOKEN has been set');
             } else if (existingToken !== codecovToken) {
                 process.env.CODECOV_TOKEN = codecovToken;
-                tokenWasSetByTask = true;
+                setTokenWasSetByTask(true);
                 console.log('Environment variable CODECOV_TOKEN has been overridden with new value');
             } else {
                 console.log('Environment variable CODECOV_TOKEN already has the correct value, not changing');
@@ -209,64 +193,12 @@ export async function run(): Promise<void> {
     }
 }
 
-export async function downloadFile(url: string, dest: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        console.log(`Downloading ${url} to ${dest}`);
-        const file = fs.createWriteStream(dest);
-        https.get(url, (response) => {
-            if (response.statusCode !== 200) {
-                return reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
-            }
-
-            response.pipe(file);
-
-            file.on('finish', () => {
-                file.close(() => {
-                    console.log(`Downloaded ${url} successfully`);
-                    resolve();
-                });
-            });
-
-            file.on('error', (err) => {
-                fs.unlink(dest, () => reject(err));
-            });
-
-        }).on('error', (err) => {
-            fs.unlink(dest, () => reject(err));
-        });
-    });
-}
-
-/**
- * Helper function to properly quote a command line argument
- * Escapes quotes and backslashes, then wraps the string in quotes
- * @param arg The argument to quote
- * @returns The quoted argument
- */
-function quoteCommandArgument(arg: string): string {
-    // Escape backslashes and quotes
-    const escaped = arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    // Wrap in quotes
-    return `"${escaped}"`;
-}
-
-// The verifyFileChecksum function has been moved to ./utils/fileUtils.ts
-
-// Define the error handler for unhandled rejections
-function handleUnhandledError(err: Error): void {
-    console.error('Unhandled error:', err);
-    // Clear sensitive environment variables on unhandled errors
-    clearSensitiveEnvironmentVariables();
-    tl.setResult(tl.TaskResult.Failed, `Unhandled error: ${err.message}`);
-}
-
 // Execute the task
 run().catch(handleUnhandledError);
 
-// Expose the handler and variables for testing purposes as named exports
-// This conditional prevents them from being included in production builds
+/**
+ * Exposes the unhandled error handler for unit testing purposes.
+ * This export is only enabled when NODE_ENV is set to 'test'.
+ * When used in production builds, this will be undefined.
+ */
 export const __runCatchHandlerForTest = process.env.NODE_ENV === 'test' ? handleUnhandledError : undefined;
-export const setTokenWasSetByTaskForTest = process.env.NODE_ENV === 'test' ?
-    (value: boolean): void => {
-        tokenWasSetByTask = value;
-    } : undefined;

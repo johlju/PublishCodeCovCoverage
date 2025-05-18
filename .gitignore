@@ -17,10 +17,11 @@ build/
 codecov
 codecov.SHA256SUM*
 pgp_keys.asc
+.taskkey
 
 # Coverage reports
 coverage/
-junit.xml
+*junit.xml
 
 # TypeScript cache
 *.tsbuildinfo

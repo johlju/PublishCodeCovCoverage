@@ -1,6 +1,7 @@
 import * as tl from 'azure-pipelines-task-lib/task';
 import * as fs from 'node:fs';
 import * as https from 'node:https';
+import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 // Mock dependencies
@@ -11,11 +12,13 @@ jest.mock('node:fs');
 jest.mock('../utils/fileUtils', () => ({
   verifyFileChecksum: jest.fn().mockImplementation(() => Promise.resolve())
 }));
+jest.mock('../utils/webUtils');
 
 // Import functions after mocking dependencies
-import { run, downloadFile } from '../index';
+import { run } from '../index';
 // Get reference to the mocked verifyFileChecksum
 import { verifyFileChecksum } from '../utils/fileUtils';
+import { setTokenWasSetByTask } from '../utils/environmentUtils';
 
 describe('PublishCodeCovCoverage', () => {
   // Store original env to restore it after each test
@@ -126,6 +129,23 @@ describe('PublishCodeCovCoverage', () => {
     process.env = originalEnv;
   });
 
+  afterAll(() => {
+    /**
+     * Clean up .taskkey file if it exists
+     * The azure-pipelines-task-lib creates this file when running tasks,
+     * even in test environments. We remove it to avoid accumulating these files
+     * during test runs and to prevent potential test interference between runs.
+     */
+    const taskKeyPath = path.join(process.cwd(), '.taskkey');
+      try {
+        if (require('node:fs').existsSync(taskKeyPath)) {
+          require('fs').unlinkSync(taskKeyPath);
+        }
+      } catch (error) {
+        // Ignore errors during cleanup
+      }
+  });
+
   test('run function should complete successfully', async () => {
     await run();
 
@@ -168,6 +188,12 @@ describe('PublishCodeCovCoverage', () => {
       on: jest.fn()
     };
 
+    // Import the module to mock
+    const webUtils = require('../utils/webUtils');
+    // Mock the downloadFile function to throw an error for HTTP issues
+    jest.spyOn(webUtils, 'downloadFile').mockRejectedValueOnce(new Error('Failed to get (404)'));
+
+    // We still need the original https.get mock for other parts of the code
     (https.get as jest.Mock).mockImplementation((url, callback) => {
       callback(mockErrorResponse);
       return { on: jest.fn() };
@@ -194,6 +220,11 @@ describe('PublishCodeCovCoverage', () => {
 
     (https.get as jest.Mock).mockReturnValue(mockRequest);
 
+    // Import the module to mock
+    const webUtils = require('../utils/webUtils');
+    // Mock the downloadFile function to throw a network error
+    jest.spyOn(webUtils, 'downloadFile').mockRejectedValueOnce(new Error('Network error'));
+
     await run();
 
     expect(tl.setResult).toHaveBeenCalledWith(
@@ -202,48 +233,7 @@ describe('PublishCodeCovCoverage', () => {
     );
   });
 
-  test('downloadFile function should return a promise', async () => {
-    const promise = downloadFile('https://example.com/file', 'dest-file');
-    expect(promise).toBeInstanceOf(Promise);
-    await promise;
-  });
-
-  test('downloadFile function should handle HTTP error status codes', async () => {
-    // Setup HTTPS mock with error response
-    const mockErrorResponse = {
-      statusCode: 404,
-      pipe: jest.fn(),
-      on: jest.fn()
-    };
-
-    (https.get as jest.Mock).mockImplementation((url, callback) => {
-      callback(mockErrorResponse);
-      return { on: jest.fn() };
-    });
-
-    await expect(downloadFile('https://example.com/file', 'dest-file'))
-      .rejects
-      .toThrow('Failed to get');
-  });
-
-  test('downloadFile function should handle file write error', async () => {
-    // Mock file write error
-    const mockErrorStream = {
-      on: jest.fn().mockImplementation((event, handler) => {
-        if (event === 'error') {
-          setTimeout(() => handler(new Error('File write error')), 0);
-        }
-        return mockErrorStream;
-      }),
-      close: jest.fn()
-    };
-
-    (fs.createWriteStream as jest.Mock).mockReturnValue(mockErrorStream);
-
-    await expect(downloadFile('https://example.com/file', 'dest-file'))
-      .rejects
-      .toThrow('File write error');
-  });
+  // downloadFile tests have been moved to webUtils.test.ts
 
   test('should handle localization file not found', async () => {
     // Mock task.json not existing
@@ -335,20 +325,15 @@ describe('PublishCodeCovCoverage', () => {
   test('handles unhandled errors at the top level and clears token if set by task', async () => {
     // Create a spy on console.error
     const consoleSpy = jest.spyOn(console, 'error');
-
     // Set up a token and the tokenWasSetByTask flag
-    // We need to access the internal variable to simulate it being set
     process.env.CODECOV_TOKEN = 'test-token-for-unhandled-error';
-    const taskModule = require('../index');
-    if (typeof taskModule.setTokenWasSetByTaskForTest === 'function') {
-      taskModule.setTokenWasSetByTaskForTest(true);
-    }
+    setTokenWasSetByTask(true);
 
     // Create a fake error
     const fakeError = new Error("Test unhandled error");
 
     // Directly call the catch handler at the bottom of the file
-    const runCatchHandler = taskModule.__runCatchHandlerForTest;
+    const { __runCatchHandlerForTest: runCatchHandler } = require('../index');
     if (runCatchHandler) {
       runCatchHandler(fakeError);
 
@@ -677,9 +662,6 @@ describe('PublishCodeCovCoverage', () => {
   });
 
   test('should clear CODECOV_TOKEN only if it was set by the task', async () => {
-    // We'll need to access our module's tokenWasSetByTask variable
-    const taskModule = require('../index');
-
     // First case: Task doesn't change the token value
     // Setup an existing token in the environment
     const initialToken = 'initial-token';
@@ -699,9 +681,7 @@ describe('PublishCodeCovCoverage', () => {
     });
 
     // Reset the tokenWasSetByTask flag from previous tests
-    if (typeof taskModule.setTokenWasSetByTaskForTest === 'function') {
-      taskModule.setTokenWasSetByTaskForTest(false);
-    }
+    setTokenWasSetByTask(false);
 
     await run();
 
