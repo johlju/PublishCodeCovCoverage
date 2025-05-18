@@ -209,13 +209,7 @@ export async function downloadFile(
                 signal.removeEventListener('abort', abortHandler);
             }
 
-            file.close();
-            fs.unlink(dest, (unlinkErr) => {
-                if (unlinkErr) {
-                    console.warn(`Warning: Failed to clean up temporary file '${dest}' after request timeout: ${unlinkErr.message}`);
-                }
-                reject(new Error(`Request timed out after ${timeout}ms: ${fileUrl}`));
-            });
+            cleanupAndReject(new Error(`Request timed out after ${timeout}ms: ${fileUrl}`));
         });
     });
 }
