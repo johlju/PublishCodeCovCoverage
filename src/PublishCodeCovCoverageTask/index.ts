@@ -196,6 +196,9 @@ export async function run(): Promise<void> {
 // Execute the task
 run().catch(handleUnhandledError);
 
-// Expose the handler for testing purposes as named export
-// This conditional prevents it from being included in production builds
+/**
+ * Exposes the unhandled error handler for unit testing purposes.
+ * This export is only enabled when NODE_ENV is set to 'test'.
+ * When used in production builds, this will be undefined.
+ */
 export const __runCatchHandlerForTest = process.env.NODE_ENV === 'test' ? handleUnhandledError : undefined;
