@@ -1,6 +1,6 @@
-const http = require('http');
-const path = require('path');
-const fs = require('fs');
+const http = require('node:http');
+const path = require('node:path');
+const fs = require('node:fs');
 
 // Create a simple HTTP server that serves a file with controlled speed
 // to test download progress functionality
