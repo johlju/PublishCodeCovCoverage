@@ -37,8 +37,11 @@ Before using this extension, ensure you have the following:
 4. Run the tests to ensure everything is working:
 
    ```sh
-   npm run test
+   npm run test         # Run unit tests only
+   npm run test:integration # Run integration tests only   npm run test:all     # Run both unit and integration tests
    ```
+
+   For more details about testing, refer to the [Testing Documentation](docs/testing.md).
 
 5. Build and package the extension by running:
 

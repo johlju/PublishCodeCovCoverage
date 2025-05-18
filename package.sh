@@ -9,7 +9,7 @@ fi
 
 # Run tests
 echo "Running tests..."
-npm run test
+npm run test:all
 
 # Compile TypeScript
 echo "Compiling TypeScript..."
