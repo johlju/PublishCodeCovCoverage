@@ -12,6 +12,7 @@ import * as url from 'node:url';
  * @param options.maxRedirects Maximum number of redirects to follow (default: 5)
  * @param options._redirectCount Internal counter for number of redirects followed (don't set this manually)
  * @param options.signal AbortSignal to allow manual cancellation of the download
+ * @param options.onProgress Optional callback for progress updates with { bytesReceived, totalBytes, percent }
  * @returns A promise that resolves when the download is complete
  */
 export async function downloadFile(
@@ -21,13 +22,15 @@ export async function downloadFile(
         timeout?: number,
         maxRedirects?: number,
         _redirectCount?: number,
-        signal?: AbortSignal
+        signal?: AbortSignal,
+        onProgress?: (progress: { bytesReceived: number, totalBytes: number | null, percent: number | null }) => void
     } = {}
 ): Promise<void> {
     const timeout = options.timeout || 30000; // Default timeout of 30 seconds
     const maxRedirects = options.maxRedirects || 5; // Default max 5 redirects
     const redirectCount = options._redirectCount || 0;
     const signal = options.signal;
+    const onProgress = options.onProgress;
 
     return new Promise<void>((resolve, reject) => {
         console.log(`Downloading ${fileUrl} to ${dest}`);
@@ -105,7 +108,8 @@ export async function downloadFile(
                             timeout,
                             maxRedirects,
                             _redirectCount: redirectCount + 1,
-                            signal // Pass along the abort signal to the redirected request
+                            signal, // Pass along the abort signal to the redirected request
+                            onProgress // Pass along the progress callback
                         }
                     )
                     .then(resolve)
@@ -124,9 +128,25 @@ export async function downloadFile(
                     reject(new Error(`Failed to get '${fileUrl}' (${response.statusCode})`));
                 });
                 return;
-            }
+            }            // Get the total file size from the response headers
+            const totalBytes = parseInt(response.headers && response.headers['content-length'] || '', 10);
 
-            // Pipe the response to the file
+            let bytesReceived = 0;            // Set up progress tracking
+            if (onProgress && typeof response.on === 'function') {
+                if (!isNaN(totalBytes)) {
+                    console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+                }
+
+                response.on('data', (chunk) => {
+                    bytesReceived += chunk.length;
+
+                    onProgress({
+                        bytesReceived,
+                        totalBytes: isNaN(totalBytes) ? null : totalBytes,
+                        percent: isNaN(totalBytes) ? null : Math.round((bytesReceived / totalBytes) * 100)
+                    });
+                });
+            }            // Pipe the response to the file
             response.pipe(file);
 
             file.on('finish', () => {
