@@ -502,7 +502,7 @@ describe('webUtils', () => {
                 return new Promise((resolve, reject) => {
                     // We won't actually use addEventListener here - we'll simulate its behavior
                     setTimeout(() => {
-                        reject(new Error('Download aborted by user: ' + fileUrl));
+                        reject(new Error(`Download aborted by user: ${fileUrl}`));
                     }, 10);
                 });
             }
