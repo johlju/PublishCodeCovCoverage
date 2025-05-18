@@ -32,6 +32,11 @@ describe('commandUtils', () => {
       expect(result).toBe('"file with spaces and $pecial ch@rs"');
     });
 
+    test('should handle strings with single quotes', () => {
+      const result = quoteCommandArgument("argument with 'single quotes'");
+      expect(result).toBe("\"argument with 'single quotes'\"");
+    });
+
     test('should handle paths with multiple backslashes', () => {
       const result = quoteCommandArgument('C:\\Users\\username\\Documents\\');
       expect(result).toBe('"C:\\\\Users\\\\username\\\\Documents\\\\"');
