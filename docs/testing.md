@@ -14,7 +14,7 @@ npm run test
 
 ## Integration Tests
 
-Integration tests are located in the `__integration_tests__` directories and test the interaction between multiple components, often making actual HTTP requests and file system operations. These tests provide a higher level of confidence but are generally slower and require more resources.
+Integration tests are located in the `__integration_tests__` directories and test the interaction between multiple components, often making actual HTTP requests and file system operations. These tests provide a higher level of confidence, but are generally slower and require more resources.
 
 Integration tests focus primarily on ensuring the full workflow executes without errors, rather than making specific assertions about intermediate states. They verify that components work together correctly in real-world scenarios.
 
