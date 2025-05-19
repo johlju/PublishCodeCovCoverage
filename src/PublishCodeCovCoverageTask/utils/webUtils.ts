@@ -51,10 +51,10 @@ export function downloadFile(
             if (cleanupPerformed) {
                 return;
             }
-            
+
             // Mark cleanup as performed
             cleanupPerformed = true;
-            
+
             // Abort the request if it's still in progress
             if (!controller.signal.aborted) {
                 controller.abort();
@@ -170,8 +170,8 @@ export function downloadFile(
                 // Handle axios errors (network issues, timeout, etc.)
                 if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
                     cleanup(new Error(`Request timed out after ${options.timeout || 30000}ms: ${fileUrl}`), error.response);
-                } else if (axios.isAxiosError(error) && error.code === 'ERR_CANCELED') {
-                    cleanup(new Error(`Download aborted by user: ${fileUrl}`), error.response);
+                } else if (axios.isCancel(error)) {
+                    cleanup(new Error(`Download aborted by user: ${fileUrl}`));
                 } else {
                     cleanup(error as Error, axios.isAxiosError(error) ? error.response : undefined);
                 }
