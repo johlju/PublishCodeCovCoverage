@@ -19,10 +19,9 @@ jest.mock('node:fs', () => {
 /**
  * Mock axios module for testing.
  * IMPORTANT: This project uses strongly-typed mocks for better maintainability.
- *
- * Benefits:
- * - Type safety: mockAxios is typed as jest.MockedFunction<typeof axios> which ensures all mock
- *   implementations maintain the correct typing and return values match the axios API
+ * * Benefits:
+ * - Type safety: mockAxios is typed as jest.MockedFunction<typeof axios> & Partial<jest.Mocked<typeof axios>> which ensures all mock
+ *   implementations maintain the correct typing and return values match the axios API, including static methods
  * - Prevents runtime errors: Compiler catches type mismatches that would otherwise cause runtime failures
  * - Better IDE support: Proper autocompletion for mock methods and parameters
  * - Better testing practices: Using jest.mockResolvedValueOnce() instead of mockReturnValueOnce(Promise.resolve())
@@ -31,7 +30,7 @@ jest.mock('node:fs', () => {
  * - Easier refactoring: When the axios API changes, TypeScript will identify all impacted test code
  *
  * Implementation guidelines:
- * 1. ALWAYS declare mocks with proper typing: let mockAxios: jest.MockedFunction<typeof axios>
+ * 1. ALWAYS declare mocks with proper typing: let mockAxios: jest.MockedFunction<typeof axios> & Partial<jest.Mocked<typeof axios>>
  * 2. ALWAYS use mockResolvedValueOnce() instead of mockReturnValueOnce(Promise.resolve())
  * 3. ALWAYS use mockRejectedValueOnce() instead of mockReturnValueOnce(Promise.reject())
  * 4. NEVER use type assertions like (axios as any) - this defeats the purpose of typed mocks
@@ -46,7 +45,8 @@ jest.mock('axios');
 describe('webUtils', () => {
   // Setup mocks
   let mockFs: any;
-  let mockAxios: jest.MockedFunction<typeof axios>;
+  // Use a type that combines both the function mock and the static properties
+  let mockAxios: jest.MockedFunction<typeof axios> & Partial<jest.Mocked<typeof axios>>;
   let mockFileStream: any;
   let mockDataStream: any;
 
@@ -55,11 +55,15 @@ describe('webUtils', () => {
 
     // Mock console methods
     jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});    // Get the mocked modules
-    mockFs = fs as jest.Mocked<typeof fs>;
-    mockAxios = axios as jest.MockedFunction<typeof axios>;
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    // Set up default mocks for axios methods
+    // Get the mocked modules
+    mockFs = fs as jest.Mocked<typeof fs>;
+
+    // Set up axios mock - using combined type to handle both the callable function aspect and static properties
+    mockAxios = axios as jest.MockedFunction<typeof axios> & Partial<jest.Mocked<typeof axios>>;
+
+    // Set up default mocks for axios static methods
     (mockAxios as any).isAxiosError = jest.fn().mockReturnValue(false);
     (mockAxios as any).isCancel = jest.fn().mockReturnValue(false);
 
