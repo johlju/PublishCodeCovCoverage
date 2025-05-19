@@ -405,7 +405,7 @@ describe('webUtils', () => {
 
       // Set up isAxiosError helper
       mockAxios.isAxiosError.mockReturnValue(true);
-      
+
       // Explicitly set isCancel to false to test the older code path with ERR_CANCELED
       mockAxios.isCancel.mockReturnValue(false);
 

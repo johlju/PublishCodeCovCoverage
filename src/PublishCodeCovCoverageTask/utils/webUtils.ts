@@ -135,10 +135,22 @@ export function downloadFile(
                     // The size is not fixed and varies based on network conditions
                     (response.data as Stream).on('data', (chunk) => {
                         bytesReceived += chunk.length;
+
+                        // Calculate percentage, capping at 100% to handle compressed data scenarios
+                        // where decompressed size might exceed the Content-Length header value
+                        let percent = null;
+                        if (!isNaN(totalBytes) && totalBytes > 0) {
+                            if (bytesReceived >= totalBytes) {
+                                percent = 100; // Cap at 100% if received bytes exceed total bytes
+                            } else {
+                                percent = Math.round((bytesReceived / totalBytes) * 100);
+                            }
+                        }
+
                         options.onProgress!({
                             bytesReceived,
                             totalBytes: isNaN(totalBytes) || totalBytes <= 0 ? null : totalBytes,
-                            percent: isNaN(totalBytes) || totalBytes <= 0 ? null : Math.round((bytesReceived / totalBytes) * 100)
+                            percent
                         });
                     });
                 }
