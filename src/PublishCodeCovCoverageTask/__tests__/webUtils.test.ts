@@ -63,6 +63,11 @@ describe('webUtils', () => {
     mockAxios.isAxiosError = jest.fn();
   });
 
+  afterEach(() => {
+    // Restore all mocks to prevent side effects in other test files
+    jest.restoreAllMocks();
+  });
+
   describe('downloadFile', () => {
     test('should ensure parent directory exists before downloading', async () => {
       // Configure axios to return a valid response
