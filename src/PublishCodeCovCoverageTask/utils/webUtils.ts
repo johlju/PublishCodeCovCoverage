@@ -39,21 +39,23 @@ export async function downloadFile(
 
         // Function to clean up on error
         const cleanup = (error: Error) => {
-            file.close();
-            // Check if file exists before trying to delete it
-            fs.access(dest, fs.constants.F_OK, (accessErr) => {
-                if (accessErr) {
-                    // File doesn't exist, just reject with the original error
-                    reject(error);
-                } else {
-                    // File exists, try to delete it
-                    fs.unlink(dest, (unlinkErr) => {
-                        if (unlinkErr) {
-                            console.warn(`Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`);
-                        }
+            // Close the file and wait for it to complete before accessing/deleting the file
+            file.close(() => {
+                // Check if file exists before trying to delete it
+                fs.access(dest, fs.constants.F_OK, (accessErr) => {
+                    if (accessErr) {
+                        // File doesn't exist, just reject with the original error
                         reject(error);
-                    });
-                }
+                    } else {
+                        // File exists, try to delete it
+                        fs.unlink(dest, (unlinkErr) => {
+                            if (unlinkErr) {
+                                console.warn(`Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`);
+                            }
+                            reject(error);
+                        });
+                    }
+                });
             });
         };
 
