@@ -13,6 +13,7 @@ import { Stream } from 'node:stream';
  * @param options.signal AbortSignal to allow manual cancellation of the download
  * @param options.onProgress Optional callback for progress updates with { bytesReceived, totalBytes, percent }
  * @param options.overwrite Whether to overwrite the destination file if it already exists (default: true)
+ * @param options.progressThrottleMs Throttle interval in milliseconds for progress updates (default: 200)
  * @returns A promise that resolves when the download is complete
  */
 export function downloadFile(
@@ -23,7 +24,8 @@ export function downloadFile(
         maxRedirects?: number,
         signal?: AbortSignal,
         onProgress?: (progress: { bytesReceived: number, totalBytes: number | null, percent: number | null }) => void,
-        overwrite?: boolean
+        overwrite?: boolean,
+        progressThrottleMs?: number
     } = {}
 ): Promise<void> {
     console.log(`Downloading ${fileUrl} to ${dest}`);
@@ -163,6 +165,10 @@ export function downloadFile(
 
                 // Setup progress tracking manually since onDownloadProgress doesn't work with streams
                 let bytesReceived = 0;
+                let lastReportedPercent: number | null = null;
+                let progressThrottleMs = options.progressThrottleMs || 200;
+                let lastProgressTime = Date.now();
+
                 if (options.onProgress) {
                     // The chunk size here is dynamic and determined by:
                     // 1. Node.js's HTTP client internal buffering
@@ -183,11 +189,18 @@ export function downloadFile(
                             }
                         }
 
-                        options.onProgress!({
-                            bytesReceived,
-                            totalBytes: isNaN(totalBytes) || totalBytes <= 0 ? null : totalBytes,
-                            percent
-                        });
+                        // Throttle progress updates
+                        const now = Date.now();
+                        if (now - lastProgressTime >= progressThrottleMs || percent !== lastReportedPercent) {
+                            lastProgressTime = now;
+                            lastReportedPercent = percent;
+
+                            options.onProgress!({
+                                bytesReceived,
+                                totalBytes: isNaN(totalBytes) || totalBytes <= 0 ? null : totalBytes,
+                                percent
+                            });
+                        }
                     });
                 }
 
