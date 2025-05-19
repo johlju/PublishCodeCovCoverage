@@ -10,6 +10,7 @@ jest.mock('node:fs', () => {
     createWriteStream: jest.fn(),
     access: jest.fn(),
     unlink: jest.fn(),
+    mkdirSync: jest.fn(),
     constants: { F_OK: 1 }
   };
   return mockFs;
@@ -63,6 +64,55 @@ describe('webUtils', () => {
   });
 
   describe('downloadFile', () => {
+    test('should ensure parent directory exists before downloading', async () => {
+      // Configure axios to return a valid response
+      (axios as any).mockImplementationOnce(() => {
+        return Promise.resolve({
+          status: 200,
+          headers: { 'content-length': '1024' },
+          data: mockDataStream
+        });
+      });
+
+      // Call downloadFile function with a path that includes directories
+      const downloadPromise = downloadFile(
+        'https://example.com/file.zip',
+        '/path/to/nested/directory/file.zip'
+      );
+
+      // Simulate file stream completion
+      setTimeout(() => {
+        mockFileStream.emit('finish');
+        mockFileStream.close.mock.calls[0][0]();
+      }, 100);
+
+      // Wait for the download to complete
+      await downloadPromise;
+
+      // Verify the directory was created
+      expect(mockFs.mkdirSync).toHaveBeenCalledWith('/path/to/nested/directory', { recursive: true });
+      expect(mockFs.createWriteStream).toHaveBeenCalledWith('/path/to/nested/directory/file.zip');
+    });
+
+    test('should handle errors during directory creation', async () => {
+      // Make mkdirSync throw an error
+      const dirError = new Error('Directory creation failed');
+      mockFs.mkdirSync.mockImplementationOnce(() => {
+        throw dirError;
+      });
+
+      // Call downloadFile and expect it to reject due to directory creation failure
+      await expect(downloadFile(
+        'https://example.com/file.zip',
+        '/path/to/error/directory/file.zip'
+      )).rejects.toThrow('Failed to create directory \'/path/to/error/directory\': Directory creation failed');
+
+      // Verify that createWriteStream was not called
+      expect(mockFs.createWriteStream).not.toHaveBeenCalled();
+      // Verify that axios was not called
+      expect(axios).not.toHaveBeenCalled();
+    });
+
     test('should download a file successfully', async () => {
       // Override axios function call - use mockImplementationOnce instead
       (axios as any).mockImplementationOnce(() => {

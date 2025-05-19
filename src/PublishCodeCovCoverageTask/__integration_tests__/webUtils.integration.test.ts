@@ -40,7 +40,35 @@ describe('webUtils - Integration Tests', () => {
         }
     });
 
-    describe('downloadFile with progress tracking', () => {
+    describe('downloadFile', () => {
+        test('should create non-existent directories when downloading', async () => {
+            // Use our local test server
+            const testUrl = server.url;
+
+            // Create a nested path that doesn't exist yet
+            const nestedDir = path.join(tempDir, 'nested', 'directories', 'for', 'test');
+            const nestedFilePath = path.join(nestedDir, 'nested-download.txt');
+
+            // Make sure the directory doesn't exist yet
+            if (fs.existsSync(nestedDir)) {
+                fs.rmSync(nestedDir, { recursive: true, force: true });
+            }
+
+            // Download the file - this should create the directory structure
+            await downloadFile(
+                testUrl,
+                nestedFilePath,
+                {}
+            );
+
+            // Verify the file exists
+            expect(fs.existsSync(nestedFilePath)).toBe(true);
+
+            // Verify the content was downloaded
+            const content = fs.readFileSync(nestedFilePath, 'utf8');
+            expect(content).not.toBe('');
+        }, 30000); // Allow up to 30 seconds for the download
+
         test('should download a file and report progress', async () => {
             // Use our local test server
             const testUrl = server.url;

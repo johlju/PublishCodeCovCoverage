@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import axios from 'axios';
 import { Stream } from 'node:stream';
 
@@ -25,6 +26,14 @@ export async function downloadFile(
 ): Promise<void> {
     console.log(`Downloading ${fileUrl} to ${dest}`);
     return new Promise<void>((resolve, reject) => {
+        // Ensure parent directory exists
+        const parentDir = path.dirname(dest);
+        try {
+            fs.mkdirSync(parentDir, { recursive: true });
+        } catch (err) {
+            return reject(new Error(`Failed to create directory '${parentDir}': ${(err as Error).message}`));
+        }
+
         // Create the file stream
         const file = fs.createWriteStream(dest);
 
