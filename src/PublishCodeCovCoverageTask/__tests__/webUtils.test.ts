@@ -55,12 +55,6 @@ describe('webUtils', () => {
 
     // Setup fs.createWriteStream mock
     mockFs.createWriteStream.mockReturnValue(mockFileStream);
-
-    // Setup axios mock methods
-    mockAxios.mockImplementation = jest.fn();
-    mockAxios.mockResolvedValueOnce = jest.fn();
-    mockAxios.mockRejectedValueOnce = jest.fn();
-    mockAxios.isAxiosError = jest.fn();
   });
 
   afterEach(() => {
