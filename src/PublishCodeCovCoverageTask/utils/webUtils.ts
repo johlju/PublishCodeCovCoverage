@@ -103,7 +103,8 @@ export function downloadFile(
                 }
 
                 // Get total size from headers
-                const totalBytes = Number.parseInt(response.headers['content-length'] || undefined, 10);
+                const contentLengthHeader = response.headers['content-length'];
+                const totalBytes = contentLengthHeader !== undefined ? Number.parseInt(contentLengthHeader, 10) : NaN;
 
                 if (options.onProgress) {
                     if (!isNaN(totalBytes) && totalBytes > 0) {
