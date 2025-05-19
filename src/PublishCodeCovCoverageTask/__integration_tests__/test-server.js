@@ -25,6 +25,26 @@ const createTestServer = (port = 0) => {
 
         // Create server
         const server = http.createServer((req, res) => {
+            // Check for timeout test path
+            if (req.url === '/timeout-test') {
+                console.log('Received request to timeout endpoint - will delay response');
+
+                // Set a long delay that will exceed any reasonable timeout in tests
+                const longDelay = 5000; // 5 seconds delay
+
+                setTimeout(() => {
+                    // This response will only be sent after the delay
+                    // By then, the client should have already timed out
+                    res.writeHead(200, {
+                        'Content-Length': 20,
+                        'Content-Type': 'text/plain'
+                    });
+                    res.end('Delayed response data');
+                }, longDelay);
+
+                return; // Exit early to apply the delay
+            }
+
             const filePath = testFilePath;
             const stat = fs.statSync(filePath);
 
@@ -54,6 +74,8 @@ const createTestServer = (port = 0) => {
             });
         });
 
+        // Note: http.Server.listen() can be detected as an "open handle" by Jest --detectOpenHandles
+        // This is expected behavior and not a memory leak. The server is properly closed in the test's afterAll block.
         server.listen(port, () => {
             const actualPort = server.address().port;
             console.log(`Test server listening on port ${actualPort}`);
@@ -61,17 +83,28 @@ const createTestServer = (port = 0) => {
             resolve({
                 port: actualPort,
                 url: `http://localhost:${actualPort}`,
+                timeoutUrl: `http://localhost:${actualPort}/timeout-test`,
                 testFilePath,
-                fileSize,
-                close: () => {
-                    server.close();
-                    try {
-                        if (fs.existsSync(testFilePath)) {
-                            fs.unlinkSync(testFilePath);
-                        }
-                    } catch (err) {
-                        console.warn(`Failed to clean up test file: ${err.message}`);
-                    }
+                fileSize,                close: () => {
+                    // Proper cleanup of server to minimize "open handle" warnings
+                    // This doesn't guarantee Jest won't detect the server handle,
+                    // but it ensures we're doing everything possible to clean up
+                    return new Promise((resolveClose) => {
+                        server.close(() => {
+                            // Use keep-alive-socket destruction as recommended for complete cleanup
+                            server.unref();
+
+                            try {
+                                if (fs.existsSync(testFilePath)) {
+                                    fs.unlinkSync(testFilePath);
+                                }
+                            } catch (err) {
+                                console.warn(`Failed to clean up test file: ${err.message}`);
+                            }
+
+                            resolveClose();
+                        });
+                    });
                 }
             });
         });

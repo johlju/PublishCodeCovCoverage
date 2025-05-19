@@ -25,9 +25,10 @@ describe('webUtils - Integration Tests', () => {
     });
 
     // Clean up temp files and server after all tests
-    afterAll(() => {
+    afterAll(async () => {
         if (server) {
-            server.close();
+            // Await the proper server close method that returns a promise
+            await server.close();
         }
 
         try {
@@ -39,6 +40,19 @@ describe('webUtils - Integration Tests', () => {
             console.error(`Error cleaning up test files: ${err}`);
         }
     });
+
+    /**
+     * NOTE on Jest "open handle" warnings:
+     * When running with `--detectOpenHandles`, Jest may report an open handle from the test server.
+     * This is due to http.Server.listen() keeping the Node.js process alive, which is expected behavior.
+     *
+     * We're properly cleaning up the server with server.close() in afterAll(), but the server's internal
+     * timeout mechanism can still be detected as an open handle by Jest. This is a known limitation
+     * when testing HTTP servers, and does not indicate a memory leak or other issue in the tests.
+     *
+     * The warning can be safely ignored as it's related to the test infrastructure rather than
+     * the code being tested. In production builds, this is not an issue.
+     */
 
     describe('downloadFile', () => {
         test('should create non-existent directories when downloading', async () => {
@@ -97,7 +111,11 @@ describe('webUtils - Integration Tests', () => {
             console.log(`File downloaded to ${testFilePath}`);
             console.log(`Received ${progressUpdates.length} progress updates`);
             if (progressUpdates.length > 0) {
-                console.log(`Last progress update: ${progressUpdates[progressUpdates.length - 1].percent}%`);
+                const lastUpdate = progressUpdates[progressUpdates.length - 1];
+                if (lastUpdate) {
+                    const percentDisplay = lastUpdate.percent !== null ? `${lastUpdate.percent}%` : 'unknown';
+                    console.log(`Last progress update: ${percentDisplay}`);
+                }
             }
 
             // Minimal validation just to ensure the file was created
@@ -143,12 +161,14 @@ describe('webUtils - Integration Tests', () => {
                 throw new Error('Expected download to be aborted, but it completed successfully');
             } catch (error: any) {
                 // Just log that we received the expected abort error
-                console.log(`Received abort error: ${error.message}`);
-
-                // Log progress captured before abort
+                console.log(`Received abort error: ${error.message}`);                // Log progress captured before abort
                 console.log(`Received ${progressUpdates.length} progress updates before abort`);
                 if (progressUpdates.length > 0) {
-                    console.log(`Last progress update before abort: ${progressUpdates[progressUpdates.length - 1].percent}%`);
+                    const lastUpdate = progressUpdates[progressUpdates.length - 1];
+                    if (lastUpdate) {
+                        const percentDisplay = lastUpdate.percent !== null ? `${lastUpdate.percent}%` : 'unknown';
+                        console.log(`Last progress update before abort: ${percentDisplay}`);
+                    }
                 }
 
                 // Add a small delay to allow file cleanup to complete
@@ -157,31 +177,52 @@ describe('webUtils - Integration Tests', () => {
         }, 30000); // Allow up to 30 seconds for the test
 
         test('should handle custom timeout settings', async () => {
-            const testUrl = server.url;
             const timeoutFilePath = path.join(tempDir, 'timeout-test.txt');
 
-            // Using very short timeout to demonstrate timeout handling
-            // In a real scenario, this would likely fail, but our test server
-            // responds quickly enough that it should succeed
-            console.log('Testing download with a very short timeout (500ms)');
+            // Using the special timeout endpoint that has an intentional delay
+            console.log('Testing download with timeout handling');
 
             try {
-                await downloadFile(testUrl, timeoutFilePath, {
-                    timeout: 500, // Very short timeout of 500ms
+                // The server will wait 5 seconds before responding, but we set a 1 second timeout
+                // This should always trigger a timeout error
+                await downloadFile(server.timeoutUrl, timeoutFilePath, {
+                    timeout: 1000, // 1 second timeout
                 });
 
-                console.log('Download completed within timeout period');
-
-                // Check if file exists
-                if (fs.existsSync(timeoutFilePath)) {
-                    const stats = fs.statSync(timeoutFilePath);
-                    console.log(`Downloaded file size: ${stats.size} bytes`);
-                    fs.unlinkSync(timeoutFilePath);
-                } else {
-                    console.log('File was not created, but no error was thrown');
-                }
+                // If we reach here, the test has failed
+                console.error('Download completed when it should have timed out!');
+                fail('Expected download to time out, but it completed successfully');
             } catch (error: any) {
+                // Verify the error message contains "timed out"
                 console.log(`Timeout error received as expected: ${error.message}`);
+                expect(error.message).toContain('timed out');
+                expect(error.message).toContain('1000ms');
+
+                // If file was partially created, clean it up
+                if (fs.existsSync(timeoutFilePath)) {
+                    fs.unlinkSync(timeoutFilePath);
+                }
+            }
+        }, 30000);
+
+        test('should correctly report custom timeout value in error message', async () => {
+            const timeoutFilePath = path.join(tempDir, 'timeout-custom-test.txt');
+
+            // Use a different timeout value to validate the error message reflects it correctly
+            const customTimeout = 2500; // 2.5 seconds
+
+            try {
+                // The server will wait 5 seconds before responding, so this should still timeout
+                await downloadFile(server.timeoutUrl, timeoutFilePath, {
+                    timeout: customTimeout,
+                });
+
+                fail('Expected download to time out, but it completed successfully');
+            } catch (error: any) {
+                // Verify the error message contains the exact custom timeout value
+                console.log(`Timeout error received with custom value: ${error.message}`);
+                expect(error.message).toContain('timed out');
+                expect(error.message).toContain(`${customTimeout}ms`);
 
                 // If file was partially created, clean it up
                 if (fs.existsSync(timeoutFilePath)) {
