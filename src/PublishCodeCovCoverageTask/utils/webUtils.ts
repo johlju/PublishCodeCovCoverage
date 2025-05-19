@@ -42,8 +42,19 @@ export function downloadFile(
         // Create the file stream
         const file = fs.createWriteStream(dest);
 
+        // Flag to track if cleanup has already been performed
+        let cleanupPerformed = false;
+
         // Function to clean up on error
         const cleanup = (error: Error, response?: any) => {
+            // Guard against multiple executions
+            if (cleanupPerformed) {
+                return;
+            }
+            
+            // Mark cleanup as performed
+            cleanupPerformed = true;
+            
             // Abort the request if it's still in progress
             if (!controller.signal.aborted) {
                 controller.abort();
