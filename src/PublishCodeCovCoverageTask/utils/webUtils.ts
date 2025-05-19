@@ -60,15 +60,19 @@ export async function downloadFile(
         })
             .then(response => {
                 // Handle non-success status codes
-                if (response.status !== 200) {
+                if (response.status < 200 || response.status >= 300) {
                     return cleanup(new Error(`Failed to get '${fileUrl}' (${response.status})`));
                 }
 
                 // Get total size from headers
-                const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
+                const totalBytes = Number.parseInt(response.headers['content-length'] || undefined, 10);
 
-                if (!isNaN(totalBytes) && totalBytes > 0 && options.onProgress) {
-                    console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+                if (options.onProgress) {
+                    if (!isNaN(totalBytes) && totalBytes > 0) {
+                        console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+                    } else {
+                        console.log(`Download started - total size unknown (Content-Length header missing)`);
+                    }
                 }
 
                 // Setup progress tracking manually since onDownloadProgress doesn't work with streams

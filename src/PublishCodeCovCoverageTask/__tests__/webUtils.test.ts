@@ -105,6 +105,71 @@ describe('webUtils', () => {
       expect(mockDataStream.pipe).toHaveBeenCalledWith(mockFileStream);
     });
 
+    test('should handle other 2xx status codes (204 and 206)', async () => {
+      // Test for 204 No Content
+      (axios as any).mockImplementationOnce(() => {
+        return Promise.resolve({
+          status: 204, // No Content
+          headers: { }, // No content-length for 204
+          data: mockDataStream
+        });
+      });
+
+      // Call downloadFile function for 204
+      const downloadPromise204 = downloadFile(
+        'https://example.com/empty-resource',
+        '/path/to/empty-file'
+      );
+
+      // Simulate file stream completion
+      setTimeout(() => {
+        mockFileStream.emit('finish');
+        mockFileStream.close.mock.calls[0][0]();
+      }, 100);
+
+      // Wait for the download to complete
+      await downloadPromise204;
+
+      // Verify the download was successful with status 204
+      expect(axios).toHaveBeenCalledWith(expect.objectContaining({
+        url: 'https://example.com/empty-resource'
+      }));
+
+      jest.clearAllMocks();
+
+      // Test for 206 Partial Content
+      (axios as any).mockImplementationOnce(() => {
+        return Promise.resolve({
+          status: 206, // Partial Content
+          headers: { 'content-length': '512', 'content-range': 'bytes 0-511/1024' },
+          data: mockDataStream
+        });
+      });
+
+      // Call downloadFile function for 206
+      const downloadPromise206 = downloadFile(
+        'https://example.com/partial-content',
+        '/path/to/partial-file'
+      );
+
+      // Simulate data chunks coming in
+      mockDataStream.emit('data', Buffer.from('partial-content'));
+
+      // Simulate file stream completion
+      setTimeout(() => {
+        mockFileStream.emit('finish');
+        mockFileStream.close.mock.calls[0][0]();
+      }, 100);
+
+      // Wait for the download to complete
+      await downloadPromise206;
+
+      // Verify the download was successful with status 206
+      expect(axios).toHaveBeenCalledWith(expect.objectContaining({
+        url: 'https://example.com/partial-content'
+      }));
+    });
+
     test('should handle progress tracking', async () => {
       // Override axios function call
       (axios as any).mockReturnValueOnce(Promise.resolve({
