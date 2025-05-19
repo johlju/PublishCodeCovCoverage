@@ -14,7 +14,7 @@ import { Stream } from 'node:stream';
  * @param options.onProgress Optional callback for progress updates with { bytesReceived, totalBytes, percent }
  * @returns A promise that resolves when the download is complete
  */
-export async function downloadFile(
+export function downloadFile(
     fileUrl: string,
     dest: string,
     options: {
