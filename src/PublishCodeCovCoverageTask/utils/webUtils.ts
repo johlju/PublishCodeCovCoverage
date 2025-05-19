@@ -12,6 +12,7 @@ import { Stream } from 'node:stream';
  * @param options.maxRedirects Maximum number of redirects to follow (default: 5)
  * @param options.signal AbortSignal to allow manual cancellation of the download
  * @param options.onProgress Optional callback for progress updates with { bytesReceived, totalBytes, percent }
+ * @param options.overwrite Whether to overwrite the destination file if it already exists (default: true)
  * @returns A promise that resolves when the download is complete
  */
 export function downloadFile(
@@ -21,7 +22,8 @@ export function downloadFile(
         timeout?: number,
         maxRedirects?: number,
         signal?: AbortSignal,
-        onProgress?: (progress: { bytesReceived: number, totalBytes: number | null, percent: number | null }) => void
+        onProgress?: (progress: { bytesReceived: number, totalBytes: number | null, percent: number | null }) => void,
+        overwrite?: boolean
     } = {}
 ): Promise<void> {
     console.log(`Downloading ${fileUrl} to ${dest}`);
@@ -30,6 +32,16 @@ export function downloadFile(
         const controller = new AbortController();
         // Use the provided signal or our controller's signal
         const signal = options.signal || controller.signal;
+
+        // Check if the destination file already exists
+        if (fs.existsSync(dest)) {
+            // By default overwrite is true unless explicitly set to false
+            if (options.overwrite === false) {
+                console.log(`File already exists at '${dest}' and overwrite is false, skipping download`);
+                return resolve();
+            }
+            console.log(`File already exists at '${dest}', will be overwritten`);
+        }
 
         // Ensure parent directory exists
         const parentDir = path.dirname(dest);

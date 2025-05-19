@@ -11,6 +11,7 @@ jest.mock('node:fs', () => {
     access: jest.fn(),
     unlink: jest.fn(),
     mkdirSync: jest.fn(),
+    existsSync: jest.fn(),
     constants: { F_OK: 1 }
   };
   return mockFs;
@@ -59,6 +60,9 @@ describe('webUtils', () => {
 
     // Get the mocked modules
     mockFs = fs as jest.Mocked<typeof fs>;
+
+    // Set default behavior for existsSync (default to false - file doesn't exist)
+    mockFs.existsSync.mockReturnValue(false);
 
     // Set up axios mock - using combined type to handle both the callable function aspect and static properties
     mockAxios = axios as jest.MockedFunction<typeof axios> & Partial<jest.Mocked<typeof axios>>;
