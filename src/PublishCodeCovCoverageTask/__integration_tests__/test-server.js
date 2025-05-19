@@ -35,6 +35,9 @@ const createTestServer = (port = 0) => {
             });
 
             // Stream the file with artificial delays to simulate slow network
+            // For testing purposes, we explicitly set the chunk size to 4096 bytes (4KB)
+            // In real-world scenarios, chunk sizes are dynamic and determined by the OS,
+            // network conditions, and Node.js's internal buffering mechanisms
             const fileStream = fs.createReadStream(filePath, { highWaterMark: 4096 });
 
             fileStream.on('data', (chunk) => {
