@@ -2,9 +2,10 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  testMatch: ['**/__tests__/**/*.test.ts', '**/*.test.ts'],
+  testMatch: ['**/__tests__/**/*.test.ts'],
+  testPathIgnorePatterns: ['\\.integration\\.test\\.ts$'],
   collectCoverage: true,
-  collectCoverageFrom: ['src/**/*.ts', '!src/**/__tests__/**/*.ts', '!**/*.test.ts'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/__tests__/**/*.ts', '!src/**/__integration_tests__/**/*.ts', '!**/*.test.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['json', 'lcov', 'text', 'clover'],
   reporters: [
