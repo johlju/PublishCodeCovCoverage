@@ -1,7 +1,6 @@
 import * as fs from 'node:fs';
-import * as https from 'node:https';
-import * as http from 'node:http';
-import * as url from 'node:url';
+import axios from 'axios';
+import { Stream } from 'node:stream';
 
 /**
  * Downloads a file from a URL to a local destination
@@ -10,7 +9,6 @@ import * as url from 'node:url';
  * @param options Additional options for the download
  * @param options.timeout Timeout in milliseconds before the request is aborted (default: 30000)
  * @param options.maxRedirects Maximum number of redirects to follow (default: 5)
- * @param options._redirectCount Internal counter for number of redirects followed (don't set this manually)
  * @param options.signal AbortSignal to allow manual cancellation of the download
  * @param options.onProgress Optional callback for progress updates with { bytesReceived, totalBytes, percent }
  * @returns A promise that resolves when the download is complete
@@ -21,34 +19,19 @@ export async function downloadFile(
     options: {
         timeout?: number,
         maxRedirects?: number,
-        _redirectCount?: number,
+        _redirectCount?: number, // Kept for backward compatibility but no longer used internally
         signal?: AbortSignal,
         onProgress?: (progress: { bytesReceived: number, totalBytes: number | null, percent: number | null }) => void
     } = {}
 ): Promise<void> {
-    const timeout = options.timeout || 30000; // Default timeout of 30 seconds
-    const maxRedirects = options.maxRedirects || 5; // Default max 5 redirects
-    const redirectCount = options._redirectCount || 0;
-    const signal = options.signal;
-    const onProgress = options.onProgress;
+    console.log(`Downloading ${fileUrl} to ${dest}`);
 
-    return new Promise<void>((resolve, reject) => {
-        console.log(`Downloading ${fileUrl} to ${dest}`);
-
-        // Check if already aborted before starting
-        if (signal?.aborted) {
-            return reject(new Error(`Download aborted: ${fileUrl}`));
-        }
-
-        // Parse the URL to determine if it uses http or https
-        const parsedUrl = new url.URL(fileUrl);
-        const protocol = parsedUrl.protocol === 'https:' ? https : http;
-
+    return new Promise<void>(async (resolve, reject) => {
         // Create the file stream
         const file = fs.createWriteStream(dest);
 
-        // Function to clean up resources and reject with an error
-        const cleanupAndReject = (error: Error) => {
+        // Function to clean up on error
+        const cleanup = (error: Error) => {
             file.close();
             fs.unlink(dest, (unlinkErr) => {
                 if (unlinkErr) {
@@ -58,114 +41,62 @@ export async function downloadFile(
             });
         };
 
-        // Set up abort handler if signal is provided
-        let abortHandler: (() => void) | undefined;
-        if (signal) {
-            abortHandler = () => {
-                if (req) {
-                    req.destroy();
-                    cleanupAndReject(new Error(`Download aborted by user: ${fileUrl}`));
-                }
-            };
-            signal.addEventListener('abort', abortHandler);
-        }
-
-        // Create the request
-        const req = protocol.get(fileUrl, (response) => {
-            // Handle redirects
-            if (response.statusCode && [301, 302, 307, 308].includes(response.statusCode)) {
-                // Close the file since we'll be creating a new one for the redirected URL
-                file.close();
-                fs.unlink(dest, (unlinkErr) => {
-                    if (unlinkErr) {
-                        console.warn(`Warning: Failed to clean up temporary file '${dest}' during redirect: ${unlinkErr.message}`);
-                    }
-                    // Get the redirect URL
-                    const redirectUrl = response.headers.location;
-
-                    if (!redirectUrl) {
-                        return reject(new Error(`Redirect received but no location header for '${fileUrl}'`));
-                    }
-
-                    // Check if we've exceeded the maximum number of redirects
-                    if (redirectCount >= maxRedirects) {
-                        return reject(new Error(`Maximum redirect count (${maxRedirects}) reached for '${fileUrl}'`));
-                    }
-
-                    console.log(`Following redirect (${redirectCount + 1}/${maxRedirects}): ${redirectUrl}`);
-
-                    // Clean up the abort listener before recursive call
-                    if (signal && abortHandler) {
-                        signal.removeEventListener('abort', abortHandler);
-                    }
-
-                    // Recursively call downloadFile with the new URL and incremented redirect count
-                    downloadFile(
-                        // Handle both absolute and relative redirect URLs
-                        redirectUrl.startsWith('http') ? redirectUrl : new url.URL(redirectUrl, fileUrl).href,
-                        dest,
-                        {
-                            timeout,
-                            maxRedirects,
-                            _redirectCount: redirectCount + 1,
-                            signal, // Pass along the abort signal to the redirected request
-                            onProgress // Pass along the progress callback
-                        }
-                    )
-                    .then(resolve)
-                    .catch(reject);
-                });
-                return;
-            }
+        try {
+            // Setup axios config
+            const response = await axios({
+                method: 'GET',
+                url: fileUrl,
+                responseType: 'stream',
+                timeout: options.timeout || 30000,
+                maxRedirects: options.maxRedirects || 5,
+                signal: options.signal,
+                validateStatus: null, // Don't throw on any status code
+                onDownloadProgress: options.onProgress ?
+                    // Note: onDownloadProgress doesn't work with stream responseType,
+                    // but we keep it in case axios implementation changes in the future
+                    (progressEvent) => {
+                        const progress = {
+                            bytesReceived: progressEvent.loaded,
+                            totalBytes: progressEvent.total || null,
+                            percent: progressEvent.total ? Math.round((progressEvent.loaded / progressEvent.total) * 100) : null
+                        };
+                        options.onProgress!(progress);
+                    } : undefined
+            });
 
             // Handle non-success status codes
-            if (response.statusCode !== 200) {
-                file.close();
-                fs.unlink(dest, (unlinkErr) => {
-                    if (unlinkErr) {
-                        console.warn(`Warning: Failed to clean up temporary file '${dest}' after HTTP error: ${unlinkErr.message}`);
-                    }
-                    reject(new Error(`Failed to get '${fileUrl}' (${response.statusCode})`));
-                });
-                return;
-            }            // Get the total file size from the response headers
-            const totalBytes = Number.parseInt(response.headers?.['content-length'] || '', 10);
+            if (response.status !== 200) {
+                return cleanup(new Error(`Failed to get '${fileUrl}' (${response.status})`));
+            }
 
+            // Get total size from headers
+            const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
+
+            if (!isNaN(totalBytes) && totalBytes > 0 && options.onProgress) {
+                console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+            }
+
+            // Setup progress tracking manually since onDownloadProgress doesn't work with streams
             let bytesReceived = 0;
-
-            // Set up progress tracking
-            if (onProgress && typeof response.on === 'function') {
-                if (!isNaN(totalBytes)) {
-                    console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
-                }
-
-                response.on('data', (chunk) => {
+            if (options.onProgress) {
+                (response.data as Stream).on('data', (chunk) => {
                     bytesReceived += chunk.length;
-
-                    onProgress({
+                    options.onProgress!({
                         bytesReceived,
                         totalBytes: isNaN(totalBytes) ? null : totalBytes,
                         percent: isNaN(totalBytes) ? null : Math.round((bytesReceived / totalBytes) * 100)
                     });
                 });
-            }            // Pipe the response to the file
-            response.pipe(file);
+            }
 
+            // Pipe response to file
+            (response.data as Stream).pipe(file);
+
+            // Handle file events
             file.on('finish', () => {
-                // Clean up abort listener on success
-                if (signal && abortHandler) {
-                    signal.removeEventListener('abort', abortHandler);
-                }
-
                 file.close((err) => {
                     if (err) {
-                        fs.unlink(dest, (unlinkErr) => {
-                            if (unlinkErr) {
-                                console.warn(`Warning: Failed to clean up temporary file '${dest}' after file close error: ${unlinkErr.message}`);
-                            }
-                            reject(err);
-                        });
-                        return;
+                        return cleanup(err);
                     }
                     console.log(`Downloaded ${fileUrl} successfully`);
                     resolve();
@@ -173,45 +104,22 @@ export async function downloadFile(
             });
 
             file.on('error', (err) => {
-                // Clean up abort listener on file error
-                if (signal && abortHandler) {
-                    signal.removeEventListener('abort', abortHandler);
-                }
-
-                // Clean up file on error
-                fs.unlink(dest, (unlinkErr) => {
-                    if (unlinkErr) {
-                        console.warn(`Warning: Failed to clean up temporary file '${dest}' after file stream error: ${unlinkErr.message}`);
-                    }
-                    reject(err);
-                });
+                cleanup(err);
             });
-        }).on('error', (err) => {
-            // Clean up abort listener on request error
-            if (signal && abortHandler) {
-                signal.removeEventListener('abort', abortHandler);
-            }
 
-            // Clean up file on request error
-            file.close();
-            fs.unlink(dest, (unlinkErr) => {
-                if (unlinkErr) {
-                    console.warn(`Warning: Failed to clean up temporary file '${dest}' after request error: ${unlinkErr.message}`);
-                }
-                reject(err);
+            // Handle stream errors
+            (response.data as Stream).on('error', (err) => {
+                cleanup(err);
             });
-        });
-
-        // Set up timeout to abort the request if it takes too long
-        req.setTimeout(timeout, () => {
-            req.destroy();
-
-            // Clean up abort listener on timeout
-            if (signal && abortHandler) {
-                signal.removeEventListener('abort', abortHandler);
+        } catch (error) {
+            // Handle axios errors (network issues, timeout, etc.)
+            if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+                cleanup(new Error(`Request timed out after ${options.timeout || 30000}ms: ${fileUrl}`));
+            } else if (axios.isAxiosError(error) && error.code === 'ERR_CANCELED') {
+                cleanup(new Error(`Download aborted by user: ${fileUrl}`));
+            } else {
+                cleanup(error as Error);
             }
-
-            cleanupAndReject(new Error(`Request timed out after ${timeout}ms: ${fileUrl}`));
-        });
+        }
     });
 }
