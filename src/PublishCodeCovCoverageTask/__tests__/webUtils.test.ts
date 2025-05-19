@@ -107,7 +107,8 @@ describe('webUtils', () => {
       // Simulate file stream completion
       setTimeout(() => {
         mockFileStream.emit('finish');
-        mockFileStream.close.mock.calls[0][0]();
+        // Emit close event instead of directly accessing mock.calls
+        mockFileStream.emit('close');
       }, 100);
 
       // Wait for the download to complete
@@ -158,8 +159,8 @@ describe('webUtils', () => {
       // Simulate file stream completion
       setTimeout(() => {
         mockFileStream.emit('finish');
-        // Simulate the callback being called after close
-        mockFileStream.close.mock.calls[0][0]();
+        // Emit close event instead of directly accessing mock.calls
+        mockFileStream.emit('close');
       }, 100);
 
       // Wait for the download to complete
@@ -194,7 +195,8 @@ describe('webUtils', () => {
       // Simulate file stream completion
       setTimeout(() => {
         mockFileStream.emit('finish');
-        mockFileStream.close.mock.calls[0][0]();
+        // Emit close event instead of directly accessing mock.calls
+        mockFileStream.emit('close');
       }, 100);
 
       // Wait for the download to complete
@@ -226,7 +228,8 @@ describe('webUtils', () => {
       // Simulate file stream completion
       setTimeout(() => {
         mockFileStream.emit('finish');
-        mockFileStream.close.mock.calls[0][0]();
+        // Emit close event instead of directly accessing mock.calls
+        mockFileStream.emit('close');
       }, 100);
 
       // Wait for the download to complete
@@ -267,11 +270,11 @@ describe('webUtils', () => {
         console.log('Debug - onProgressMock was called:', onProgressMock.mock.calls.length, 'times');
       }, 10);
 
-      // Simulate file stream completion with proper close callback execution
+      // Simulate file stream completion with proper close event
       setTimeout(() => {
         mockFileStream.emit('finish');
-        // Simulate the callback being called after close
-        mockFileStream.close.mock.calls[0][0]();
+        // Emit close event instead of directly accessing mock.calls
+        mockFileStream.emit('close');
       }, 100);
 
       // Wait for the download to complete
