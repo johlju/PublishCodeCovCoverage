@@ -98,8 +98,8 @@ export async function downloadFile(
                         bytesReceived += chunk.length;
                         options.onProgress!({
                             bytesReceived,
-                            totalBytes: isNaN(totalBytes) ? null : totalBytes,
-                            percent: isNaN(totalBytes) ? null : Math.round((bytesReceived / totalBytes) * 100)
+                            totalBytes: isNaN(totalBytes) || totalBytes <= 0 ? null : totalBytes,
+                            percent: isNaN(totalBytes) || totalBytes <= 0 ? null : Math.round((bytesReceived / totalBytes) * 100)
                         });
                     });
                 }
