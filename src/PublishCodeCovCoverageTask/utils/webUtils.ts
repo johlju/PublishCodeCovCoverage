@@ -42,8 +42,9 @@ export function downloadFile(
         // Create the file stream
         const file = fs.createWriteStream(dest);
 
-        // Flag to track if cleanup has already been performed
+        // Flags to track if cleanup has already been performed and if file is closed
         let cleanupPerformed = false;
+        let fileIsClosed = false;
 
         // Function to clean up on error
         const cleanup = (error: Error, response?: any) => {
@@ -81,9 +82,9 @@ export function downloadFile(
                 }
             }
 
-            // Close the file and wait for it to complete before accessing/deleting the file
-            file.close(() => {
-                // Check if file exists before trying to delete it
+            // Close the file if not already closed and wait for it to complete before accessing/deleting the file
+            if (fileIsClosed) {
+                // File already closed, proceed with cleanup
                 fs.access(dest, fs.constants.F_OK, (accessErr) => {
                     if (accessErr) {
                         // File doesn't exist, just reject with the original error
@@ -98,7 +99,26 @@ export function downloadFile(
                         });
                     }
                 });
-            });
+            } else {
+                fileIsClosed = true;
+                file.close(() => {
+                    // Check if file exists before trying to delete it
+                    fs.access(dest, fs.constants.F_OK, (accessErr) => {
+                        if (accessErr) {
+                            // File doesn't exist, just reject with the original error
+                            reject(error);
+                        } else {
+                            // File exists, try to delete it
+                            fs.unlink(dest, (unlinkErr) => {
+                                if (unlinkErr) {
+                                    console.warn(`Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`);
+                                }
+                                reject(error);
+                            });
+                        }
+                    });
+                });
+            }
         };
 
         // Setup axios config
@@ -164,6 +184,16 @@ export function downloadFile(
 
                 // Handle file events
                 file.on('finish', () => {
+                    // Only close the file if it hasn't been closed already
+                    if (fileIsClosed) {
+                        console.log(`Downloaded ${fileUrl} successfully`);
+                        resolve();
+                        return;
+                    }
+
+                    fileIsClosed = true;
+
+                    // Close the file and resolve the promise
                     file.close((err) => {
                         if (err) {
                             return cleanup(err, response);
