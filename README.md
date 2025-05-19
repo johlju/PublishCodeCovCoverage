@@ -104,6 +104,41 @@ jobs:
 
 For detailed usage instructions, please see the [usage documentation](docs/usage.md).
 
+## Testing Guidelines
+
+This project enforces strict code quality standards including proper TypeScript typing for all Jest mocks.
+
+### Typed Mocks Best Practices
+
+We've adopted strict typing for all mocks in our test files to ensure type safety and better maintainability:
+
+```typescript
+// GOOD: Properly typed mocks
+let mockAxios: jest.MockedFunction<typeof axios>;
+
+// BAD: Avoid untyped mocks
+let mockAxios: any;
+```
+
+For axios mocks specifically:
+
+```typescript
+// GOOD: Use mockResolvedValueOnce for clearer promise handling
+mockAxios.mockResolvedValueOnce({ status: 200, data: responseData });
+
+// BAD: Don't use untyped casting
+(axios as any).mockImplementationOnce(() => {
+  return Promise.resolve({ status: 200, data: responseData });
+});
+```
+
+For more details on our mocking standards:
+
+- See the [Testing Best Practices](docs/testing-best-practices.md) guide
+- Review example implementation in [webUtils.test.ts](src/PublishCodeCovCoverageTask/__tests__/webUtils.test.ts)
+
+All new contributions must follow these patterns.
+
 ## Contributing
 
 Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
