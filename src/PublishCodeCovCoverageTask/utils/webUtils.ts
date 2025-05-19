@@ -26,6 +26,11 @@ export async function downloadFile(
 ): Promise<void> {
     console.log(`Downloading ${fileUrl} to ${dest}`);
     return new Promise<void>((resolve, reject) => {
+        // Create an abort controller for the axios request
+        const controller = new AbortController();
+        // Use the provided signal or our controller's signal
+        const signal = options.signal || controller.signal;
+
         // Ensure parent directory exists
         const parentDir = path.dirname(dest);
         try {
@@ -38,7 +43,29 @@ export async function downloadFile(
         const file = fs.createWriteStream(dest);
 
         // Function to clean up on error
-        const cleanup = (error: Error) => {
+        const cleanup = (error: Error, response?: any) => {
+            // Abort the request if it's still in progress
+            if (!controller.signal.aborted) {
+                controller.abort();
+            }
+              // Destroy the response stream if it exists
+            if (response && response.data) {
+                try {
+                    // Use the appropriate method to destroy/end the stream
+                    const stream = response.data;
+                    if (typeof (stream as any).destroy === 'function') {
+                        (stream as any).destroy();
+                    } else if (typeof (stream as any).cancel === 'function') {
+                        (stream as any).cancel();
+                    } else if (typeof (stream as any).end === 'function') {
+                        (stream as any).end();
+                    }
+                } catch (e) {
+                    // Ignore errors when destroying the stream
+                    console.warn(`Warning: Failed to destroy stream: ${(e as Error).message}`);
+                }
+            }
+
             // Close the file and wait for it to complete before accessing/deleting the file
             file.close(() => {
                 // Check if file exists before trying to delete it
@@ -66,13 +93,13 @@ export async function downloadFile(
             responseType: 'stream',
             timeout: options.timeout || 30000,
             maxRedirects: options.maxRedirects || 5,
-            signal: options.signal,
+            signal: signal,
             validateStatus: null // Don't throw on any status code
         })
             .then(response => {
                 // Handle non-success status codes
                 if (response.status < 200 || response.status >= 300) {
-                    return cleanup(new Error(`Failed to get '${fileUrl}' (${response.status})`));
+                    return cleanup(new Error(`Failed to get '${fileUrl}' (${response.status})`), response);
                 }
 
                 // Get total size from headers
@@ -111,7 +138,7 @@ export async function downloadFile(
                 file.on('finish', () => {
                     file.close((err) => {
                         if (err) {
-                            return cleanup(err);
+                            return cleanup(err, response);
                         }
                         console.log(`Downloaded ${fileUrl} successfully`);
                         resolve();
@@ -119,22 +146,22 @@ export async function downloadFile(
                 });
 
                 file.on('error', (err) => {
-                    cleanup(err);
+                    cleanup(err, response);
                 });
 
                 // Handle stream errors
                 (response.data as Stream).on('error', (err) => {
-                    cleanup(err);
+                    cleanup(err, response);
                 });
             })
             .catch(error => {
                 // Handle axios errors (network issues, timeout, etc.)
                 if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
-                    cleanup(new Error(`Request timed out after ${options.timeout || 30000}ms: ${fileUrl}`));
+                    cleanup(new Error(`Request timed out after ${options.timeout || 30000}ms: ${fileUrl}`), error.response);
                 } else if (axios.isAxiosError(error) && error.code === 'ERR_CANCELED') {
-                    cleanup(new Error(`Download aborted by user: ${fileUrl}`));
+                    cleanup(new Error(`Download aborted by user: ${fileUrl}`), error.response);
                 } else {
-                    cleanup(error as Error);
+                    cleanup(error as Error, axios.isAxiosError(error) ? error.response : undefined);
                 }
             });
     });
