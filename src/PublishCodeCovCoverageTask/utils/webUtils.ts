@@ -19,7 +19,6 @@ export async function downloadFile(
     options: {
         timeout?: number,
         maxRedirects?: number,
-        _redirectCount?: number, // Kept for backward compatibility but no longer used internally
         signal?: AbortSignal,
         onProgress?: (progress: { bytesReceived: number, totalBytes: number | null, percent: number | null }) => void
     } = {}
