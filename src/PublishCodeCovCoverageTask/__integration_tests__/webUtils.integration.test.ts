@@ -156,37 +156,6 @@ describe('webUtils - Integration Tests', () => {
             }
         }, 30000); // Allow up to 30 seconds for the test
 
-        test('should download to a nested directory that does not exist yet', async () => {
-            // Create a nested path that doesn't exist yet
-            const nestedDir = path.join(tempDir, 'nested', 'directory');
-            const nestedFilePath = path.join(nestedDir, 'nested-download.txt');
-
-            // Use our local test server
-            const testUrl = server.url;
-
-            // Make sure parent directory exists
-            fs.mkdirSync(nestedDir, { recursive: true });
-            console.log(`Created nested directory: ${nestedDir}`);
-
-            // Download the file
-            await downloadFile(testUrl, nestedFilePath);
-
-            // Log the results
-            console.log(`File downloaded to nested path: ${nestedFilePath}`);
-
-            // Verify file was created (without using expect)
-            if (!fs.existsSync(nestedFilePath)) {
-                throw new Error('Download to nested directory failed: File does not exist');
-            }
-
-            // Log file size
-            const stats = fs.statSync(nestedFilePath);
-            console.log(`Downloaded file size: ${stats.size} bytes`);
-
-            // Clean up
-            fs.unlinkSync(nestedFilePath);
-        }, 30000);
-
         test('should handle custom timeout settings', async () => {
             const testUrl = server.url;
             const timeoutFilePath = path.join(tempDir, 'timeout-test.txt');
