@@ -16,12 +16,37 @@ jest.mock('node:fs', () => {
   return mockFs;
 });
 
+/**
+ * Mock axios module for testing.
+ * IMPORTANT: This project uses strongly-typed mocks for better maintainability.
+ *
+ * Benefits:
+ * - Type safety: mockAxios is typed as jest.MockedFunction<typeof axios> which ensures all mock
+ *   implementations maintain the correct typing and return values match the axios API
+ * - Prevents runtime errors: Compiler catches type mismatches that would otherwise cause runtime failures
+ * - Better IDE support: Proper autocompletion for mock methods and parameters
+ * - Better testing practices: Using jest.mockResolvedValueOnce() instead of mockReturnValueOnce(Promise.resolve())
+ *   for clearer and more idiomatic Jest usage
+ * - Consistent pattern: Always use mockAxios for all axios-related mocking, which improves test readability
+ * - Easier refactoring: When the axios API changes, TypeScript will identify all impacted test code
+ *
+ * Implementation guidelines:
+ * 1. ALWAYS declare mocks with proper typing: let mockAxios: jest.MockedFunction<typeof axios>
+ * 2. ALWAYS use mockResolvedValueOnce() instead of mockReturnValueOnce(Promise.resolve())
+ * 3. ALWAYS use mockRejectedValueOnce() instead of mockReturnValueOnce(Promise.reject())
+ * 4. NEVER use type assertions like (axios as any) - this defeats the purpose of typed mocks
+ * 5. For helper functions that aren't directly mockable via the type system (like isAxiosError),
+ *    use (mockAxios as any).helperFunction = jest.fn() but keep these to a minimum
+ *
+ * IMPORTANT: Do not revert to using (axios as any) or untyped mock variables.
+ * Using proper typed mocks is a requirement for this codebase.
+ */
 jest.mock('axios');
 
 describe('webUtils', () => {
   // Setup mocks
   let mockFs: any;
-  let mockAxios: any;
+  let mockAxios: jest.MockedFunction<typeof axios>;
   let mockFileStream: any;
   let mockDataStream: any;
 
@@ -32,11 +57,11 @@ describe('webUtils', () => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});    // Get the mocked modules
     mockFs = fs as jest.Mocked<typeof fs>;
-    mockAxios = axios as jest.Mocked<typeof axios>;
+    mockAxios = axios as jest.MockedFunction<typeof axios>;
 
     // Set up default mocks for axios methods
-    mockAxios.isAxiosError = jest.fn().mockReturnValue(false);
-    mockAxios.isCancel = jest.fn().mockReturnValue(false);
+    (mockAxios as any).isAxiosError = jest.fn().mockReturnValue(false);
+    (mockAxios as any).isCancel = jest.fn().mockReturnValue(false);
 
     // Create mock file stream
     mockFileStream = new EventEmitter();
@@ -67,12 +92,10 @@ describe('webUtils', () => {
   describe('downloadFile', () => {
     test('should ensure parent directory exists before downloading', async () => {
       // Configure axios to return a valid response
-      (axios as any).mockImplementationOnce(() => {
-        return Promise.resolve({
-          status: 200,
-          headers: { 'content-length': '1024' },
-          data: mockDataStream
-        });
+      mockAxios.mockResolvedValueOnce({
+        status: 200,
+        headers: { 'content-length': '1024' },
+        data: mockDataStream
       });
 
       // Call downloadFile function with a path that includes directories
@@ -111,17 +134,15 @@ describe('webUtils', () => {
       // Verify that createWriteStream was not called
       expect(mockFs.createWriteStream).not.toHaveBeenCalled();
       // Verify that axios was not called
-      expect(axios).not.toHaveBeenCalled();
+      expect(mockAxios).not.toHaveBeenCalled();
     });
 
     test('should download a file successfully', async () => {
-      // Override axios function call - use mockImplementationOnce instead
-      (axios as any).mockImplementationOnce(() => {
-        return Promise.resolve({
-          status: 200,
-          headers: { 'content-length': '1024' },
-          data: mockDataStream
-        });
+      // Override axios function call with a resolved value
+      mockAxios.mockResolvedValueOnce({
+        status: 200,
+        headers: { 'content-length': '1024' },
+        data: mockDataStream
       });
 
       // Call downloadFile function
@@ -146,7 +167,7 @@ describe('webUtils', () => {
 
       // Verify the expected calls were made
       expect(mockFs.createWriteStream).toHaveBeenCalledWith('/path/to/destination.zip');
-      expect(axios).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
         method: 'GET',
         url: 'https://example.com/file.zip',
         responseType: 'stream',
@@ -158,12 +179,10 @@ describe('webUtils', () => {
 
     test('should handle other 2xx status codes (204 and 206)', async () => {
       // Test for 204 No Content
-      (axios as any).mockImplementationOnce(() => {
-        return Promise.resolve({
-          status: 204, // No Content
-          headers: { }, // No content-length for 204
-          data: mockDataStream
-        });
+      mockAxios.mockResolvedValueOnce({
+        status: 204, // No Content
+        headers: { }, // No content-length for 204
+        data: mockDataStream
       });
 
       // Call downloadFile function for 204
@@ -182,19 +201,17 @@ describe('webUtils', () => {
       await downloadPromise204;
 
       // Verify the download was successful with status 204
-      expect(axios).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
         url: 'https://example.com/empty-resource'
       }));
 
       jest.clearAllMocks();
 
       // Test for 206 Partial Content
-      (axios as any).mockImplementationOnce(() => {
-        return Promise.resolve({
-          status: 206, // Partial Content
-          headers: { 'content-length': '512', 'content-range': 'bytes 0-511/1024' },
-          data: mockDataStream
-        });
+      mockAxios.mockResolvedValueOnce({
+        status: 206, // Partial Content
+        headers: { 'content-length': '512', 'content-range': 'bytes 0-511/1024' },
+        data: mockDataStream
       });
 
       // Call downloadFile function for 206
@@ -216,18 +233,18 @@ describe('webUtils', () => {
       await downloadPromise206;
 
       // Verify the download was successful with status 206
-      expect(axios).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
         url: 'https://example.com/partial-content'
       }));
     });
 
     test('should handle progress tracking', async () => {
       // Override axios function call
-      (axios as any).mockReturnValueOnce(Promise.resolve({
+      mockAxios.mockResolvedValueOnce({
         status: 200,
         headers: { 'content-length': '1000' },
         data: mockDataStream
-      }));
+      });
 
       // Progress tracking mock
       const onProgressMock = jest.fn();      // Call downloadFile function with progress tracking
@@ -290,10 +307,10 @@ describe('webUtils', () => {
       });
 
       // Override axios function call with non-200 status
-      (axios as any).mockReturnValueOnce(Promise.resolve({
+      mockAxios.mockResolvedValueOnce({
         status: 404,
         statusText: 'Not Found'
-      }));
+      });
 
       // Call downloadFile and expect it to reject
       await expect(downloadFile(
@@ -323,13 +340,12 @@ describe('webUtils', () => {
       Object.defineProperty(networkError, 'isAxiosError', { value: true });
 
       // Override axios function call with rejection
-      (axios as any).mockReturnValueOnce(Promise.reject(networkError));
-
+      mockAxios.mockRejectedValueOnce(networkError);
       // Set up isAxiosError helper
-      mockAxios.isAxiosError.mockReturnValue(true);
+      (mockAxios as any).isAxiosError.mockReturnValue(true);
 
       // Make sure isCancel returns false for this network error
-      mockAxios.isCancel.mockReturnValue(false);
+      (mockAxios as any).isCancel.mockReturnValue(false);
 
       // Call downloadFile and expect it to reject
       await expect(downloadFile(
@@ -360,13 +376,12 @@ describe('webUtils', () => {
       Object.defineProperty(timeoutError, 'code', { value: 'ECONNABORTED' });
 
       // Override axios function call with rejection
-      (axios as any).mockReturnValueOnce(Promise.reject(timeoutError));
-
+      mockAxios.mockRejectedValueOnce(timeoutError);
       // Set up isAxiosError helper
-      mockAxios.isAxiosError.mockReturnValue(true);
+      (mockAxios as any).isAxiosError.mockReturnValue(true);
 
       // Make sure isCancel returns false for this timeout error
-      mockAxios.isCancel.mockReturnValue(false);
+      (mockAxios as any).isCancel.mockReturnValue(false);
 
       // Call downloadFile with a custom timeout
       await expect(downloadFile(
@@ -376,7 +391,7 @@ describe('webUtils', () => {
       )).rejects.toThrow('Request timed out after 5000ms');
 
       // Verify timeout was set correctly
-      expect(axios).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
         timeout: 5000
       }));
 
@@ -401,13 +416,12 @@ describe('webUtils', () => {
       Object.defineProperty(abortError, 'code', { value: 'ERR_CANCELED' });
 
       // Override axios function call with rejection
-      (axios as any).mockReturnValueOnce(Promise.reject(abortError));
-
+      mockAxios.mockRejectedValueOnce(abortError);
       // Set up isAxiosError helper
-      mockAxios.isAxiosError.mockReturnValue(true);
+      (mockAxios as any).isAxiosError.mockReturnValue(true);
 
       // Explicitly set isCancel to false to test the older code path with ERR_CANCELED
-      mockAxios.isCancel.mockReturnValue(false);
+      (mockAxios as any).isCancel.mockReturnValue(false);
 
       // Create an AbortSignal
       const abortController = new AbortController();
@@ -447,10 +461,9 @@ describe('webUtils', () => {
       const cancelError = new Error('Request cancelled');
 
       // Override axios function call with rejection
-      (axios as any).mockReturnValueOnce(Promise.reject(cancelError));
-
+      mockAxios.mockRejectedValueOnce(cancelError);
       // Mock axios.isCancel to return true for our cancelError
-      mockAxios.isCancel.mockReturnValue(true);
+      (mockAxios as any).isCancel.mockReturnValue(true);
 
       // Create an AbortSignal
       const abortController = new AbortController();
@@ -490,10 +503,10 @@ describe('webUtils', () => {
 
       // Set up axios to simulate a cancellation when AbortController is used
       const cancelTokenError = new Error('Request aborted by AbortController');
-      mockAxios.isCancel.mockReturnValue(true);
+      (mockAxios as any).isCancel.mockReturnValue(true);
 
       // Override axios function call with rejection that will happen after we abort
-      (axios as any).mockImplementation(() => {
+      mockAxios.mockImplementation(() => {
         // Return a promise that doesn't resolve immediately
         return new Promise((resolve, reject) => {
           // Schedule a rejection after a short delay to allow abort to be called
@@ -547,11 +560,11 @@ describe('webUtils', () => {
       });
 
       // Override axios function call
-      (axios as any).mockReturnValueOnce(Promise.resolve({
+      mockAxios.mockResolvedValueOnce({
         status: 200,
         headers: { 'content-length': '1024' },
         data: mockDataStream
-      }));
+      });
 
       // Call downloadFile function
       const downloadPromise = downloadFile(
@@ -592,11 +605,10 @@ describe('webUtils', () => {
       Object.defineProperty(hybridError, 'code', { value: 'ERR_CANCELED' });
 
       // Override axios function call with rejection
-      (axios as any).mockReturnValueOnce(Promise.reject(hybridError));
-
+      mockAxios.mockRejectedValueOnce(hybridError);
       // Set up both isAxiosError and isCancel to return true
-      mockAxios.isAxiosError.mockReturnValue(true);
-      mockAxios.isCancel.mockReturnValue(true);
+      (mockAxios as any).isAxiosError.mockReturnValue(true);
+      (mockAxios as any).isCancel.mockReturnValue(true);
 
       // Call downloadFile
       const downloadPromise = downloadFile(
