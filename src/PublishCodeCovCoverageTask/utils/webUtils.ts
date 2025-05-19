@@ -56,10 +56,14 @@ export function downloadFile(
             cleanupPerformed = true;
 
             // Abort the request if it's still in progress
-            if (!controller.signal.aborted) {
-                controller.abort();
+            if (!signal.aborted) {
+                // Only abort our own controller - external signals are managed by the caller
+                if (signal === controller.signal) {
+                    controller.abort();
+                }
             }
-              // Destroy the response stream if it exists
+
+            // Destroy the response stream if it exists
             if (response && response.data) {
                 try {
                     // Use the appropriate method to destroy/end the stream
