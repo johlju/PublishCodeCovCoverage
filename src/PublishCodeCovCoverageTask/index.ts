@@ -128,6 +128,7 @@ export async function run(): Promise<void> {
     execFileSync('gpg', ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'], {
       stdio: 'inherit',
     });
+    // eslint-disable-next-line no-console
     await verifyFileChecksum('codecov', 'codecov.SHA256SUM', console.log);
     fs.chmodSync('codecov', '755');
 
