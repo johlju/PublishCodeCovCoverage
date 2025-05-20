@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import axios from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 import type { Stream } from 'node:stream';
 
 /**
@@ -77,7 +77,7 @@ export function downloadFile(
       // Setup axios config
 
       // Function to clean up on error
-      const cleanup = (error: Error, response?: unknown): void => {
+      const cleanup = (error: Error, response?: AxiosResponse<any>): void => {
         // Guard against multiple executions
         if (cleanupPerformed) {
           return;
