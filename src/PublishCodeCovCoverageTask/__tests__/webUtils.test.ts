@@ -268,14 +268,10 @@ describe('webUtils', () => {
       // The problem is that the data events need to happen AFTER the axios call
       // has been processed inside downloadFile and the 'data' event listener has been attached
       setTimeout(() => {
-        console.log('Debug - data event handlers attached:', mockDataStream.listeners('data').length);
-
         // Simulate data chunks coming in
         mockDataStream.emit('data', Buffer.from('a'.repeat(250)));
         mockDataStream.emit('data', Buffer.from('b'.repeat(250)));
         mockDataStream.emit('data', Buffer.from('c'.repeat(500)));
-
-        console.log('Debug - onProgressMock was called:', onProgressMock.mock.calls.length, 'times');
       }, 10);
 
       // Simulate file stream completion with proper close event
