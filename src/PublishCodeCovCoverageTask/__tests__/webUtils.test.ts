@@ -407,7 +407,9 @@ describe('webUtils', () => {
         '/path/to/destination.zip',
         expect.any(Function)
       );
-    });    test('should handle aborted requests with ERR_CANCELED code', async () => {
+    });
+
+    test('should handle aborted requests with ERR_CANCELED code', async () => {
       // Setup file handling mocks
       mockFs.access.mockImplementation((path: string, mode: number, callback: (err: Error | null) => void) => {
         callback(null); // No error means file exists
