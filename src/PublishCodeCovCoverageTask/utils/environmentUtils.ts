@@ -31,6 +31,7 @@ let tokenWasSetByTask = false;
  */
 export function clearSensitiveEnvironmentVariables(): void {
   if (tokenWasSetByTask && process.env.CODECOV_TOKEN) {
+    // eslint-disable-next-line no-console
     console.log('Removing CODECOV_TOKEN environment variable for security');
     // Using delete instead of setting to empty string ('') because:
     // 1. It completely removes the variable from process.env rather than leaving it with an empty value

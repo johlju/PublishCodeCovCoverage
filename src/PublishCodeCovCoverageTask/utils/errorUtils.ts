@@ -7,6 +7,7 @@ import { clearSensitiveEnvironmentVariables } from './environmentUtils';
  * @returns void
  */
 export function handleUnhandledError(err: Error): void {
+  // eslint-disable-next-line no-console
   console.error('Unhandled error:', err);
   // Clear sensitive environment variables on unhandled errors
   clearSensitiveEnvironmentVariables();

@@ -29,10 +29,13 @@ export async function run(): Promise<void> {
 
     // Log token source for debugging
     if (codecovTokenInput !== '') {
+      // eslint-disable-next-line no-console
       console.log('Using Codecov token from task input parameter');
     } else if (codecovTokenFromVariable) {
+      // eslint-disable-next-line no-console
       console.log('Using Codecov token from pipeline variable');
     } else if (process.env.CODECOV_TOKEN) {
+      // eslint-disable-next-line no-console
       console.log('Using Codecov token from pre-existing environment variable');
     }
 
@@ -43,12 +46,15 @@ export async function run(): Promise<void> {
       if (!existingToken) {
         process.env.CODECOV_TOKEN = codecovToken;
         setTokenWasSetByTask(true);
+        // eslint-disable-next-line no-console
         console.log('Environment variable CODECOV_TOKEN has been set');
       } else if (existingToken !== codecovToken) {
         process.env.CODECOV_TOKEN = codecovToken;
         setTokenWasSetByTask(true);
+        // eslint-disable-next-line no-console
         console.log('Environment variable CODECOV_TOKEN has been overridden with new value');
       } else {
+        // eslint-disable-next-line no-console
         console.log(
           'Environment variable CODECOV_TOKEN already has the correct value, not changing'
         );
@@ -59,22 +65,29 @@ export async function run(): Promise<void> {
       );
     }
 
+    // eslint-disable-next-line no-console
     console.log('Uploading code coverage to Codecov.io');
+    // eslint-disable-next-line no-console
     console.log(`Test result folder: ${testResultFolderName || 'not specified'}`);
     if (coverageFileName) {
+      // eslint-disable-next-line no-console
       console.log(
         `Coverage file name: ${coverageFileName}${!testResultFolderName ? ' (using as full path)' : ''}`
       );
     } else {
+      // eslint-disable-next-line no-console
       console.log(`Coverage file name: not specified - will use test result folder`);
     }
     if (networkRootFolder) {
+      // eslint-disable-next-line no-console
       console.log(`Network root folder: ${networkRootFolder}`);
     }
+    // eslint-disable-next-line no-console
     console.log(`Verbose mode: ${verbose ? 'enabled' : 'disabled'}`);
 
     // Save the original working directory to resolve relative paths later
     const originalWorkingDir = process.cwd();
+    // eslint-disable-next-line no-console
     console.log(`Original working directory: ${originalWorkingDir}`);
 
     // URLs for the Codecov CLI
@@ -93,19 +106,24 @@ export async function run(): Promise<void> {
 
     // Change to working directory
     process.chdir(workingDir);
+    // eslint-disable-next-line no-console
     console.log(`Working directory: ${workingDir}`);
 
     // Download necessary files
+    // eslint-disable-next-line no-console
     console.log('Downloading PGP keys...');
     await downloadFile(pgpKeysUrl, 'pgp_keys.asc');
+    // eslint-disable-next-line no-console
     console.log('Importing PGP keys...');
     execFileSync('gpg', ['--no-default-keyring', '--import', 'pgp_keys.asc'], { stdio: 'inherit' });
 
+    // eslint-disable-next-line no-console
     console.log('Downloading Codecov CLI...');
     await downloadFile(cliUrl, 'codecov');
     await downloadFile(sha256sumUrl, 'codecov.SHA256SUM');
     await downloadFile(sha256sumSigUrl, 'codecov.SHA256SUM.sig');
 
+    // eslint-disable-next-line no-console
     console.log('Verifying Codecov CLI...');
     execFileSync('gpg', ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'], {
       stdio: 'inherit',
@@ -155,11 +173,13 @@ export async function run(): Promise<void> {
 
     // If coverageFileName was provided, use -f with the file path
     if (coverageFileName) {
+      // eslint-disable-next-line no-console
       console.log(`Uploading specific coverage file: ${actualCoverageFilePath}`);
       args.push('-f', actualCoverageFilePath);
     }
     // Otherwise use -s with the testResultFolderName directory if it's specified
     else if (testResultFolderName) {
+      // eslint-disable-next-line no-console
       console.log(`Uploading from directory: ${resolvedTestResultFolderPath}`);
       args.push('-s', resolvedTestResultFolderPath);
     } else {
@@ -173,11 +193,13 @@ export async function run(): Promise<void> {
         ? networkRootFolder
         : path.resolve(originalWorkingDir, networkRootFolder);
 
+      // eslint-disable-next-line no-console
       console.log(`Adding network root folder: ${resolvedNetworkRootFolder}`);
       args.push('--network-root-folder', resolvedNetworkRootFolder);
     }
 
     // Log the command and arguments with proper quoting and escaping for readability
+    // eslint-disable-next-line no-console
     console.log(
       `Executing command: ./codecov ${args.map((arg) => quoteCommandArgument(arg)).join(' ')}`
     );
@@ -185,6 +207,7 @@ export async function run(): Promise<void> {
       stdio: 'inherit',
     });
 
+    // eslint-disable-next-line no-console
     console.log('Upload completed successfully');
 
     // Clear sensitive environment variables before exiting
@@ -193,9 +216,16 @@ export async function run(): Promise<void> {
     tl.setResult(tl.TaskResult.Succeeded, 'Code coverage uploaded successfully');
   } catch (err: unknown) {
     const error = err as Error & { stdout?: string; stderr?: string; message: string };
+    // eslint-disable-next-line no-console
     console.error(`Error: ${error.message}`);
-    if (error.stdout) console.log(`stdout: ${error.stdout}`);
-    if (error.stderr) console.error(`stderr: ${error.stderr}`);
+    if (error.stdout) {
+      // eslint-disable-next-line no-console
+      console.log(`stdout: ${error.stdout}`);
+    }
+    if (error.stderr) {
+      // eslint-disable-next-line no-console
+      console.error(`stderr: ${error.stderr}`);
+    }
 
     // Clear sensitive environment variables even on error
     clearSensitiveEnvironmentVariables();
