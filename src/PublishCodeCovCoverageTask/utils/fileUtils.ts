@@ -21,58 +21,62 @@ import * as crypto from 'node:crypto';
  * @throws Error if verification fails, file not found, or other I/O errors occur
  */
 export async function verifyFileChecksum(
-    filePath: string,
-    checksumFilePath: string,
-    logger: (message: string) => void = () => {}
+  filePath: string,
+  checksumFilePath: string,
+  logger: (message: string) => void = () => {}
 ): Promise<void> {
-    logger(`Verifying SHA-256 checksum for ${filePath} using Node.js crypto module`);
+  logger(`Verifying SHA-256 checksum for ${filePath} using Node.js crypto module`);
 
-    let checksumFileContent: string;
-    try {
-        // Read the checksum file content asynchronously
-        checksumFileContent = await fsPromises.readFile(checksumFilePath, 'utf8');
-    } catch (error) {
-        throw new Error(`Failed to read checksum file ${checksumFilePath}: ${error instanceof Error ? error.message : String(error)}`);
+  let checksumFileContent: string;
+  try {
+    // Read the checksum file content asynchronously
+    checksumFileContent = await fsPromises.readFile(checksumFilePath, 'utf8');
+  } catch (error) {
+    throw new Error(
+      `Failed to read checksum file ${checksumFilePath}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  // Parse the checksum file - format is typically: "<hash> <filename>"
+  // Find the line that contains our exact filename (file basename)
+  const fileName = path.basename(filePath);
+  const checksumLine = checksumFileContent.split('\n').find((line) => {
+    // Split by whitespace and check if any part matches the filename exactly
+    const parts = line.trim().split(/\s+/);
+    // The filename is typically the last part after spaces
+    return parts.length > 1 && parts[parts.length - 1] === fileName;
+  });
+
+  if (!checksumLine) {
+    throw new Error(`Checksum not found for ${fileName} in ${checksumFilePath}`);
+  }
+
+  // Extract expected hash - typically first part of the line
+  // Split by whitespace characters to parse the format "<hash> <filename>"
+  // Example: "a1b2c3d4e5f6... myfile.zip"
+  const parts = checksumLine.trim().split(/\s+/);
+  if (!parts[0]) {
+    throw new Error(`Invalid checksum format for ${fileName} in ${checksumFilePath}`);
+  }
+  const expectedHash = parts[0].toLowerCase();
+
+  // Calculate actual hash using a streaming approach
+  try {
+    const actualHash = await calculateFileHashStreaming(filePath);
+
+    // Compare hashes
+    if (actualHash !== expectedHash) {
+      throw new Error(
+        `SHA-256 checksum verification failed for ${filePath}:\nExpected: ${expectedHash}\nActual: ${actualHash}`
+      );
     }
 
-    // Parse the checksum file - format is typically: "<hash> <filename>"
-    // Find the line that contains our exact filename (file basename)
-    const fileName = path.basename(filePath);
-    const checksumLine = checksumFileContent
-        .split('\n')
-        .find(line => {
-            // Split by whitespace and check if any part matches the filename exactly
-            const parts = line.trim().split(/\s+/);
-            // The filename is typically the last part after spaces
-            return parts.length > 1 && parts[parts.length - 1] === fileName;
-        });
-
-    if (!checksumLine) {
-        throw new Error(`Checksum not found for ${fileName} in ${checksumFilePath}`);
-    }
-
-    // Extract expected hash - typically first part of the line
-    // Split by whitespace characters to parse the format "<hash> <filename>"
-    // Example: "a1b2c3d4e5f6... myfile.zip"
-    const parts = checksumLine.trim().split(/\s+/);
-    if (!parts[0]) {
-        throw new Error(`Invalid checksum format for ${fileName} in ${checksumFilePath}`);
-    }
-    const expectedHash = parts[0].toLowerCase();
-
-    // Calculate actual hash using a streaming approach
-    try {
-        const actualHash = await calculateFileHashStreaming(filePath);
-
-        // Compare hashes
-        if (actualHash !== expectedHash) {
-            throw new Error(`SHA-256 checksum verification failed for ${filePath}:\nExpected: ${expectedHash}\nActual: ${actualHash}`);
-        }
-
-        logger(`SHA-256 checksum verified for ${filePath}`);
-    } catch (error) {
-        throw new Error(`Failed to verify checksum for ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    logger(`SHA-256 checksum verified for ${filePath}`);
+  } catch (error) {
+    throw new Error(
+      `Failed to verify checksum for ${filePath}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 
 /**
@@ -83,32 +87,36 @@ export async function verifyFileChecksum(
  * @returns Promise that resolves with the lowercase hex digest of the hash
  */
 export function calculateFileHashStreaming(filePath: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        try {
-            // Create a read stream from the file
-            const fileStream = fs.createReadStream(filePath);
-            const hashSum = crypto.createHash('sha256');
+  return new Promise((resolve, reject) => {
+    try {
+      // Create a read stream from the file
+      const fileStream = fs.createReadStream(filePath);
+      const hashSum = crypto.createHash('sha256');
 
-            // Handle stream events
-            fileStream.on('error', (error) => {
-                reject(new Error(`Failed to read file ${filePath}: ${error.message}`));
-            });
+      // Handle stream events
+      fileStream.on('error', (error) => {
+        reject(new Error(`Failed to read file ${filePath}: ${error.message}`));
+      });
 
-            // Attach error handler to hashSum
-            hashSum.on('error', (error) => {
-                reject(new Error(`Hash calculation error: ${error.message}`));
-            });
+      // Attach error handler to hashSum
+      hashSum.on('error', (error) => {
+        reject(new Error(`Hash calculation error: ${error.message}`));
+      });
 
-            fileStream.on('data', (chunk) => {
-                hashSum.update(chunk);
-            });
+      fileStream.on('data', (chunk) => {
+        hashSum.update(chunk);
+      });
 
-            fileStream.on('end', () => {
-                const hash = hashSum.digest('hex').toLowerCase();
-                resolve(hash);
-            });
-        } catch (error) {
-            reject(new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`));
-        }
-    });
+      fileStream.on('end', () => {
+        const hash = hashSum.digest('hex').toLowerCase();
+        resolve(hash);
+      });
+    } catch (error) {
+      reject(
+        new Error(
+          `Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+    }
+  });
 }

@@ -17,11 +17,14 @@ describe('errorUtils', () => {
       // Arrange
       const testError = new Error('Test unhandled error');
       const consoleSpy = jest.spyOn(console, 'error');
-      const clearSensitiveEnvSpy = jest.spyOn(environmentUtils, 'clearSensitiveEnvironmentVariables');
-      
+      const clearSensitiveEnvSpy = jest.spyOn(
+        environmentUtils,
+        'clearSensitiveEnvironmentVariables'
+      );
+
       // Act
       handleUnhandledError(testError);
-      
+
       // Assert
       expect(consoleSpy).toHaveBeenCalledWith('Unhandled error:', testError);
       expect(clearSensitiveEnvSpy).toHaveBeenCalled();
