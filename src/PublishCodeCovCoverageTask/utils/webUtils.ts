@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import axios from 'axios';
-import { Stream } from 'node:stream';
+import type { Stream } from 'node:stream';
 
 /**
  * Downloads a file from a URL to a local destination
@@ -88,7 +88,7 @@ export function downloadFile(
                 }
 
                 // Destroy the response stream if it exists
-                if (response && response.data) {
+                if (response?.data) {
                     try {
                         // Use the appropriate method to destroy/end the stream
                         const stream = response.data as { destroy?: () => void; cancel?: () => void; end?: () => void };

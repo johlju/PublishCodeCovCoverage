@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+codecov_uploader/
+*.js
+!.eslintrc.js
+jest.config.js
+jest.setup.ts
+jest.integration.config.js
+*.d.ts
+*.json
+*.md
+*.sh
