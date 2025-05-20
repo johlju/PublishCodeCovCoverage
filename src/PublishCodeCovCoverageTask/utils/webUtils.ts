@@ -80,7 +80,7 @@ export function downloadFile(
       // Setup axios config
 
       // Function to clean up on error
-      const cleanup = (error: Error, response?: AxiosResponse<any>): void => {
+      const cleanup = (error: Error, response?: AxiosResponse<unknown>): void => {
         // Guard against multiple executions
         if (cleanupPerformed) {
           return;
@@ -112,7 +112,9 @@ export function downloadFile(
           } catch (e) {
             // Ignore errors when destroying the stream
             // eslint-disable-next-line no-console
-            console.warn(`Warning: Failed to destroy stream: ${(e as Error).message}`);
+            console.warn(
+              `Warning: Failed to destroy stream: ${e instanceof Error ? e.message : String(e)}`
+            );
           }
         }
 
@@ -178,12 +180,10 @@ export function downloadFile(
           }
 
           // Get total size from headers
-          const contentLengthHeader = response.headers['content-length'];
-          const totalBytes =
-            contentLengthHeader !== undefined ? Number.parseInt(contentLengthHeader, 10) : NaN;
+          const totalBytes = getNumericHeader(response.headers, 'content-length');
 
           if (options.onProgress) {
-            if (!isNaN(totalBytes) && totalBytes > 0) {
+            if (totalBytes !== null && totalBytes > 0) {
               // eslint-disable-next-line no-console
               console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
             } else {
@@ -204,17 +204,17 @@ export function downloadFile(
             // 2. OS network buffers and TCP packet sizes
             // 3. Server configuration and how it streams data
             // The size is not fixed and varies based on network conditions
-            (response.data as Stream).on('data', (chunk) => {
+            (response.data as Stream).on('data', (chunk: Buffer) => {
               bytesReceived += chunk.length;
 
               // Calculate percentage, capping at 100% to handle compressed data scenarios
               // where decompressed size might exceed the Content-Length header value
               let percent = null;
-              if (!isNaN(totalBytes) && totalBytes > 0) {
-                if (bytesReceived >= totalBytes) {
+              if (!isNaN(totalBytes as number) && (totalBytes as number) > 0) {
+                if (bytesReceived >= (totalBytes as number)) {
                   percent = 100; // Cap at 100% if received bytes exceed total bytes
                 } else {
-                  percent = Math.round((bytesReceived / totalBytes) * 100);
+                  percent = Math.round((bytesReceived / (totalBytes as number)) * 100);
                 }
               }
 
@@ -224,11 +224,13 @@ export function downloadFile(
                 lastProgressTime = now;
                 lastReportedPercent = percent;
 
-                options.onProgress!({
-                  bytesReceived,
-                  totalBytes: isNaN(totalBytes) || totalBytes <= 0 ? null : totalBytes,
-                  percent,
-                });
+                if (options.onProgress) {
+                  options.onProgress({
+                    bytesReceived,
+                    totalBytes: totalBytes !== null && totalBytes > 0 ? totalBytes : null,
+                    percent,
+                  });
+                }
               }
             });
           }
@@ -259,16 +261,16 @@ export function downloadFile(
             });
           });
 
-          file.on('error', (err) => {
+          file.on('error', (err: Error) => {
             cleanup(err, response);
           });
 
           // Handle stream errors
-          (response.data as Stream).on('error', (err) => {
+          (response.data as Stream).on('error', (err: Error) => {
             cleanup(err, response);
           });
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           // Handle axios errors (network issues, timeout, etc.)
           if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
             cleanup(
@@ -278,9 +280,25 @@ export function downloadFile(
           } else if (axios.isCancel(error)) {
             cleanup(new Error(`Download aborted by user: ${fileUrl}`));
           } else {
-            cleanup(error as Error, axios.isAxiosError(error) ? error.response : undefined);
+            cleanup(
+              error instanceof Error ? error : new Error(String(error)),
+              axios.isAxiosError(error) ? error.response : undefined
+            );
           }
         });
     };
   });
+}
+
+/**
+ * Safely extracts and parses a numeric header from an Axios response.
+ * Returns null if the header is missing or not a valid number.
+ */
+function getNumericHeader(headers: Record<string, unknown>, headerName: string): number | null {
+  const value = headers[headerName];
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    return !isNaN(parsed) ? parsed : null;
+  }
+  return null;
 }
