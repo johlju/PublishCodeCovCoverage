@@ -140,7 +140,7 @@ describe('PublishCodeCovCoverage', () => {
     const taskKeyPath = path.join(process.cwd(), '.taskkey');
     try {
       if (require('node:fs').existsSync(taskKeyPath)) {
-        require('fs').unlinkSync(taskKeyPath);
+        fs.unlinkSync(taskKeyPath);
       }
     } catch (error) {
       // Ignore errors during cleanup
