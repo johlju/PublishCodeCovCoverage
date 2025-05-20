@@ -148,7 +148,7 @@ export function downloadFile(
                 timeout: options.timeout || 30000,
                 maxRedirects: options.maxRedirects || 5,
                 signal: signal,
-                validateStatus: null // Don't throw on any status code
+                validateStatus: () => true // Don't throw on any status code
             })
                 .then(response => {
                     // Handle non-success status codes
