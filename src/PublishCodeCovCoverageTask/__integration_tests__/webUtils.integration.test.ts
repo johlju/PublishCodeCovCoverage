@@ -88,11 +88,11 @@ describe('webUtils - Integration Tests', () => {
             const testUrl = server.url;
 
             // Array to store progress updates
-            const progressUpdates: Array<{
+            const progressUpdates: {
                 bytesReceived: number;
                 totalBytes: number | null;
                 percent: number | null;
-            }> = [];
+            }[] = [];
 
             // Download the file with progress tracking
             await downloadFile(
@@ -130,11 +130,11 @@ describe('webUtils - Integration Tests', () => {
 
             // Create abort controller
             const abortController = new AbortController();
-            const progressUpdates: Array<{
+            const progressUpdates: {
                 bytesReceived: number;
                 totalBytes: number | null;
                 percent: number | null;
-            }> = [];
+            }[] = [];
 
             // Start the download
             const downloadPromise = downloadFile(

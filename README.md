@@ -48,7 +48,16 @@ Before using this extension, ensure you have the following:
 
    For more details about testing, refer to the [Testing Documentation](docs/testing.md).
 
-5. Build and package the extension by running:
+5. Lint your code to ensure it meets the project's coding standards:
+
+   ```sh
+   npm run lint         # Check for linting issues
+   npm run lint:fix     # Automatically fix linting issues when possible
+   ```
+
+   For more details about the ESLint setup, refer to the [ESLint Documentation](docs/eslint.md).
+
+6. Build and package the extension by running:
 
    ```sh
    npm run package
@@ -56,8 +65,8 @@ Before using this extension, ensure you have the following:
 
    Note: This will automatically run the tests before packaging.
 
-6. The packaged extension (.vsix) will be available in the `dist` directory.
-7. Upload this extension to your Azure DevOps organization or publish it to the marketplace.
+7. The packaged extension (.vsix) will be available in the `dist` directory.
+8. Upload this extension to your Azure DevOps organization or publish it to the marketplace.
 
 ## Usage
 
