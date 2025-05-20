@@ -1,6 +1,0 @@
-- Fix linting
-- fix --disable-search when only -f
-- add more arguments based on do-upload: https://github.com/codecov/codecov-cli
-- test without fixes: in codecov.yml
-- when files passed separated by comma, use -f and "<file1>","<file2>"
-- fix release pipeline with tagging based on how released should be handles for Azure Pipelines tasks.
