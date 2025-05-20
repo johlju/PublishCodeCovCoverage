@@ -175,7 +175,7 @@ export function downloadFile(
                     // Setup progress tracking manually since onDownloadProgress doesn't work with streams
                     let bytesReceived = 0;
                     let lastReportedPercent: number | null = null;
-                    let progressThrottleMs = options.progressThrottleMs || 200;
+                    const progressThrottleMs = options.progressThrottleMs || 200;
                     let lastProgressTime = Date.now();
 
                     if (options.onProgress) {
