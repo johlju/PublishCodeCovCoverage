@@ -91,14 +91,10 @@ export function downloadFile(
                 if (response && response.data) {
                     try {
                         // Use the appropriate method to destroy/end the stream
-                        const stream = response.data;
-                        if (typeof (stream as any).destroy === 'function') {
-                            (stream as any).destroy();
-                        } else if (typeof (stream as any).cancel === 'function') {
-                            (stream as any).cancel();
-                        } else if (typeof (stream as any).end === 'function') {
-                            (stream as any).end();
-                        }
+                        const stream = response.data as { destroy?: () => void; cancel?: () => void; end?: () => void };
+                        stream?.destroy?.();
+                        stream?.cancel?.();
+                        stream?.end?.();
                     } catch (e) {
                         // Ignore errors when destroying the stream
                         console.warn(`Warning: Failed to destroy stream: ${(e as Error).message}`);
