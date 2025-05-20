@@ -12,7 +12,10 @@ jest.mock('node:fs', () => {
     unlink: jest.fn(),
     mkdirSync: jest.fn(),
     existsSync: jest.fn(),
-    constants: { F_OK: 1 }
+    constants: { F_OK: 1 },
+    promises: {
+      mkdir: jest.fn().mockResolvedValue(undefined)
+    }
   };
   return mockFs;
 });
@@ -121,18 +124,15 @@ describe('webUtils', () => {
 
       // Wait for the download to complete
       await downloadPromise;
-
-      // Verify the directory was created
-      expect(mockFs.mkdirSync).toHaveBeenCalledWith('/path/to/nested/directory', { recursive: true });
+      // Verify the directory was created asynchronously
+      expect(mockFs.promises.mkdir).toHaveBeenCalledWith('/path/to/nested/directory', { recursive: true });
       expect(mockFs.createWriteStream).toHaveBeenCalledWith('/path/to/nested/directory/file.zip');
     });
 
     test('should handle errors during directory creation', async () => {
-      // Make mkdirSync throw an error
+      // Make promises.mkdir reject with an error
       const dirError = new Error('Directory creation failed');
-      mockFs.mkdirSync.mockImplementationOnce(() => {
-        throw dirError;
-      });
+      mockFs.promises.mkdir.mockRejectedValueOnce(dirError);
 
       // Call downloadFile and expect it to reject due to directory creation failure
       await expect(downloadFile(
