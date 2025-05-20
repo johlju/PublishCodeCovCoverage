@@ -142,7 +142,7 @@ describe('PublishCodeCovCoverage', () => {
       if (require('node:fs').existsSync(taskKeyPath)) {
         fs.unlinkSync(taskKeyPath);
       }
-    } catch (error) {
+    } catch {
       // Ignore errors during cleanup
     }
   });
