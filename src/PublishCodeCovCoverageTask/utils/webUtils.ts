@@ -37,7 +37,7 @@ export function downloadFile(
     // Create an abort controller for the axios request
     const controller = new AbortController();
     // Use the provided signal or our controller's signal
-    const signal = options.signal || controller.signal;
+    const signal = options.signal ?? controller.signal;
 
     // Check if the destination file already exists
     if (fs.existsSync(dest)) {
@@ -73,11 +73,11 @@ export function downloadFile(
       });
 
     // Define the function to set up the axios request
-    const setupAxiosRequest = () => {
+    const setupAxiosRequest = (): void => {
       // Setup axios config
 
       // Function to clean up on error
-      const cleanup = (error: Error, response?: any) => {
+      const cleanup = (error: Error, response?: unknown): void => {
         // Guard against multiple executions
         if (cleanupPerformed) {
           return;
@@ -160,8 +160,8 @@ export function downloadFile(
         method: 'GET',
         url: fileUrl,
         responseType: 'stream',
-        timeout: options.timeout || 30000,
-        maxRedirects: options.maxRedirects || 5,
+        timeout: options.timeout ?? 30000,
+        maxRedirects: options.maxRedirects ?? 5,
         signal: signal,
         validateStatus: () => true, // Don't throw on any status code
       })
@@ -187,7 +187,7 @@ export function downloadFile(
           // Setup progress tracking manually since onDownloadProgress doesn't work with streams
           let bytesReceived = 0;
           let lastReportedPercent: number | null = null;
-          const progressThrottleMs = options.progressThrottleMs || 200;
+          const progressThrottleMs = options.progressThrottleMs ?? 200;
           let lastProgressTime = Date.now();
 
           if (options.onProgress) {
@@ -262,7 +262,7 @@ export function downloadFile(
           // Handle axios errors (network issues, timeout, etc.)
           if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
             cleanup(
-              new Error(`Request timed out after ${options.timeout || 30000}ms: ${fileUrl}`),
+              new Error(`Request timed out after ${options.timeout ?? 30000}ms: ${fileUrl}`),
               error.response
             );
           } else if (axios.isCancel(error)) {

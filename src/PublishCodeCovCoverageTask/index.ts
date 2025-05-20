@@ -17,12 +17,12 @@ export async function run(): Promise<void> {
     }
 
     // Get input parameters
-    const testResultFolderName = tl.getInput('testResultFolderName', false) || '';
-    const coverageFileName = tl.getInput('coverageFileName', false) || '';
-    const networkRootFolder = tl.getInput('networkRootFolder', false) || '';
-    const verbose = tl.getBoolInput('verbose', false) || false;
+    const testResultFolderName = tl.getInput('testResultFolderName', false) ?? '';
+    const coverageFileName = tl.getInput('coverageFileName', false) ?? '';
+    const networkRootFolder = tl.getInput('networkRootFolder', false) ?? '';
+    const verbose = tl.getBoolInput('verbose', false) ?? false;
     // Get token from task input or pipeline variable, remove any whitespace
-    const codecovTokenInput = (tl.getInput('codecovToken', false) || '').trim();
+    const codecovTokenInput = (tl.getInput('codecovToken', false) ?? '').trim();
     const codecovTokenFromVariable = tl.getVariable('CODECOV_TOKEN');
     // If input token is empty, fallback to pipeline variable
     const codecovToken = codecovTokenInput !== '' ? codecovTokenInput : codecovTokenFromVariable;
@@ -84,7 +84,7 @@ export async function run(): Promise<void> {
     const pgpKeysUrl = 'https://keybase.io/codecovsecurity/pgp_keys.asc';
 
     // Create a directory to store files
-    const tempDir = tl.getVariable('Agent.TempDirectory') || '.';
+    const tempDir = tl.getVariable('Agent.TempDirectory') ?? '.';
     const workingDir = path.join(tempDir, 'codecov_uploader');
 
     if (!fs.existsSync(workingDir)) {
@@ -191,15 +191,16 @@ export async function run(): Promise<void> {
     clearSensitiveEnvironmentVariables();
 
     tl.setResult(tl.TaskResult.Succeeded, 'Code coverage uploaded successfully');
-  } catch (err: any) {
-    console.error(`Error: ${err.message}`);
-    if (err.stdout) console.log(`stdout: ${err.stdout}`);
-    if (err.stderr) console.error(`stderr: ${err.stderr}`);
+  } catch (err: unknown) {
+    const error = err as Error & { stdout?: string; stderr?: string; message: string };
+    console.error(`Error: ${error.message}`);
+    if (error.stdout) console.log(`stdout: ${error.stdout}`);
+    if (error.stderr) console.error(`stderr: ${error.stderr}`);
 
     // Clear sensitive environment variables even on error
     clearSensitiveEnvironmentVariables();
 
-    tl.setResult(tl.TaskResult.Failed, err.message);
+    tl.setResult(tl.TaskResult.Failed, error.message);
   }
 }
 
