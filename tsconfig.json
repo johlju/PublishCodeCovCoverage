@@ -9,7 +9,16 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "lib": ["es2015", "dom"],
-    "types": ["node", "jest"]
+    "types": ["node", "jest"],
+    /* Enhanced type checking */
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "alwaysStrict": true,
+    /* Additional type safety */
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
   },
   "include": ["src/**/*", "**/*.test.ts"]
 }

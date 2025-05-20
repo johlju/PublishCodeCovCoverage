@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
-import * as https from 'node:https';
-import * as http from 'node:http';
-import * as url from 'node:url';
+import * as path from 'node:path';
+import axios from 'axios';
+import { Stream } from 'node:stream';
 
 /**
  * Downloads a file from a URL to a local destination
@@ -10,208 +10,248 @@ import * as url from 'node:url';
  * @param options Additional options for the download
  * @param options.timeout Timeout in milliseconds before the request is aborted (default: 30000)
  * @param options.maxRedirects Maximum number of redirects to follow (default: 5)
- * @param options._redirectCount Internal counter for number of redirects followed (don't set this manually)
  * @param options.signal AbortSignal to allow manual cancellation of the download
  * @param options.onProgress Optional callback for progress updates with { bytesReceived, totalBytes, percent }
+ * @param options.overwrite Whether to overwrite the destination file if it already exists (default: true)
+ * @param options.progressThrottleMs Throttle interval in milliseconds for progress updates (default: 200)
  * @returns A promise that resolves when the download is complete
  */
-export async function downloadFile(
+export function downloadFile(
     fileUrl: string,
     dest: string,
     options: {
         timeout?: number,
         maxRedirects?: number,
-        _redirectCount?: number,
         signal?: AbortSignal,
-        onProgress?: (progress: { bytesReceived: number, totalBytes: number | null, percent: number | null }) => void
+        onProgress?: (progress: { bytesReceived: number, totalBytes: number | null, percent: number | null }) => void,
+        overwrite?: boolean,
+        progressThrottleMs?: number
     } = {}
 ): Promise<void> {
-    const timeout = options.timeout || 30000; // Default timeout of 30 seconds
-    const maxRedirects = options.maxRedirects || 5; // Default max 5 redirects
-    const redirectCount = options._redirectCount || 0;
-    const signal = options.signal;
-    const onProgress = options.onProgress;
-
+    console.log(`Downloading ${fileUrl} to ${dest}`);
     return new Promise<void>((resolve, reject) => {
-        console.log(`Downloading ${fileUrl} to ${dest}`);
+        // Create an abort controller for the axios request
+        const controller = new AbortController();
+        // Use the provided signal or our controller's signal
+        const signal = options.signal || controller.signal;
 
-        // Check if already aborted before starting
-        if (signal?.aborted) {
-            return reject(new Error(`Download aborted: ${fileUrl}`));
+        // Check if the destination file already exists
+        if (fs.existsSync(dest)) {
+            // By default overwrite is true unless explicitly set to false
+            if (options.overwrite === false) {
+                console.log(`File already exists at '${dest}' and overwrite is false, skipping download`);
+                return resolve();
+            }
+            console.log(`File already exists at '${dest}', will be overwritten`);
         }
 
-        // Parse the URL to determine if it uses http or https
-        const parsedUrl = new url.URL(fileUrl);
-        const protocol = parsedUrl.protocol === 'https:' ? https : http;
+        // Ensure parent directory exists
+        const parentDir = path.dirname(dest);
 
-        // Create the file stream
-        const file = fs.createWriteStream(dest);
+        // Flags to track if cleanup has already been performed and if file is closed
+        let cleanupPerformed = false;
+        let fileIsClosed = false;
+        let file: fs.WriteStream;
+        // Use asynchronous directory creation to avoid blocking the event loop
+        fs.promises.mkdir(parentDir, { recursive: true })
+            .then(() => {
+                // Create the file stream after the directory is successfully created
+                file = fs.createWriteStream(dest);
 
-        // Function to clean up resources and reject with an error
-        const cleanupAndReject = (error: Error) => {
-            file.close();
-            fs.unlink(dest, (unlinkErr) => {
-                if (unlinkErr) {
-                    console.warn(`Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`);
-                }
-                reject(error);
+                // Continue with the axios request after directory is created
+                setupAxiosRequest();
+            })
+            .catch((err) => {
+                return reject(new Error(`Failed to create directory '${parentDir}': ${(err as Error).message}`));
             });
-        };
 
-        // Set up abort handler if signal is provided
-        let abortHandler: (() => void) | undefined;
-        if (signal) {
-            abortHandler = () => {
-                if (req) {
-                    req.destroy();
-                    cleanupAndReject(new Error(`Download aborted by user: ${fileUrl}`));
+        // Define the function to set up the axios request
+        const setupAxiosRequest = () => {
+            // Setup axios config
+
+            // Function to clean up on error
+            const cleanup = (error: Error, response?: any) => {
+                // Guard against multiple executions
+                if (cleanupPerformed) {
+                    return;
+                }
+
+                // Mark cleanup as performed
+                cleanupPerformed = true;
+
+                // Abort the request if it's still in progress
+                if (!signal.aborted) {
+                    // Only abort our own controller - external signals are managed by the caller
+                    if (signal === controller.signal) {
+                        controller.abort();
+                    }
+                }
+
+                // Destroy the response stream if it exists
+                if (response && response.data) {
+                    try {
+                        // Use the appropriate method to destroy/end the stream
+                        const stream = response.data as { destroy?: () => void; cancel?: () => void; end?: () => void };
+                        stream?.destroy?.();
+                        stream?.cancel?.();
+                        stream?.end?.();
+                    } catch (e) {
+                        // Ignore errors when destroying the stream
+                        console.warn(`Warning: Failed to destroy stream: ${(e as Error).message}`);
+                    }
+                }
+
+                // Close the file if not already closed and wait for it to complete before accessing/deleting the file
+                if (fileIsClosed) {
+                    // File already closed, proceed with cleanup
+                    fs.access(dest, fs.constants.F_OK, (accessErr) => {
+                        if (accessErr) {
+                            // File doesn't exist, just reject with the original error
+                            reject(error);
+                        } else {
+                            // File exists, try to delete it
+                            fs.unlink(dest, (unlinkErr) => {
+                                if (unlinkErr) {
+                                    console.warn(`Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`);
+                                }
+                                reject(error);
+                            });
+                        }
+                    });
+                } else {
+                    fileIsClosed = true;
+                    file.close(() => {
+                        // Check if file exists before trying to delete it
+                        fs.access(dest, fs.constants.F_OK, (accessErr) => {
+                            if (accessErr) {
+                                // File doesn't exist, just reject with the original error
+                                reject(error);
+                            } else {
+                                // File exists, try to delete it
+                                fs.unlink(dest, (unlinkErr) => {
+                                    if (unlinkErr) {
+                                        console.warn(`Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`);
+                                    }
+                                    reject(error);
+                                });
+                            }
+                        });
+                    });
                 }
             };
-            signal.addEventListener('abort', abortHandler);
-        }
 
-        // Create the request
-        const req = protocol.get(fileUrl, (response) => {
-            // Handle redirects
-            if (response.statusCode && [301, 302, 307, 308].includes(response.statusCode)) {
-                // Close the file since we'll be creating a new one for the redirected URL
-                file.close();
-                fs.unlink(dest, (unlinkErr) => {
-                    if (unlinkErr) {
-                        console.warn(`Warning: Failed to clean up temporary file '${dest}' during redirect: ${unlinkErr.message}`);
-                    }
-                    // Get the redirect URL
-                    const redirectUrl = response.headers.location;
-
-                    if (!redirectUrl) {
-                        return reject(new Error(`Redirect received but no location header for '${fileUrl}'`));
+            // Setup axios config
+            axios({
+                method: 'GET',
+                url: fileUrl,
+                responseType: 'stream',
+                timeout: options.timeout || 30000,
+                maxRedirects: options.maxRedirects || 5,
+                signal: signal,
+                validateStatus: () => true // Don't throw on any status code
+            })
+                .then(response => {
+                    // Handle non-success status codes
+                    if (response.status < 200 || response.status >= 300) {
+                        return cleanup(new Error(`Failed to get '${fileUrl}' (${response.status})`), response);
                     }
 
-                    // Check if we've exceeded the maximum number of redirects
-                    if (redirectCount >= maxRedirects) {
-                        return reject(new Error(`Maximum redirect count (${maxRedirects}) reached for '${fileUrl}'`));
-                    }
+                    // Get total size from headers
+                    const contentLengthHeader = response.headers['content-length'];
+                    const totalBytes = contentLengthHeader !== undefined ? Number.parseInt(contentLengthHeader, 10) : NaN;
 
-                    console.log(`Following redirect (${redirectCount + 1}/${maxRedirects}): ${redirectUrl}`);
-
-                    // Clean up the abort listener before recursive call
-                    if (signal && abortHandler) {
-                        signal.removeEventListener('abort', abortHandler);
-                    }
-
-                    // Recursively call downloadFile with the new URL and incremented redirect count
-                    downloadFile(
-                        // Handle both absolute and relative redirect URLs
-                        redirectUrl.startsWith('http') ? redirectUrl : new url.URL(redirectUrl, fileUrl).href,
-                        dest,
-                        {
-                            timeout,
-                            maxRedirects,
-                            _redirectCount: redirectCount + 1,
-                            signal, // Pass along the abort signal to the redirected request
-                            onProgress // Pass along the progress callback
+                    if (options.onProgress) {
+                        if (!isNaN(totalBytes) && totalBytes > 0) {
+                            console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+                        } else {
+                            console.log(`Download started - total size unknown (Content-Length header missing)`);
                         }
-                    )
-                    .then(resolve)
-                    .catch(reject);
-                });
-                return;
-            }
-
-            // Handle non-success status codes
-            if (response.statusCode !== 200) {
-                file.close();
-                fs.unlink(dest, (unlinkErr) => {
-                    if (unlinkErr) {
-                        console.warn(`Warning: Failed to clean up temporary file '${dest}' after HTTP error: ${unlinkErr.message}`);
                     }
-                    reject(new Error(`Failed to get '${fileUrl}' (${response.statusCode})`));
-                });
-                return;
-            }            // Get the total file size from the response headers
-            const totalBytes = Number.parseInt(response.headers?.['content-length'] || '', 10);
 
-            let bytesReceived = 0;
+                    // Setup progress tracking manually since onDownloadProgress doesn't work with streams
+                    let bytesReceived = 0;
+                    let lastReportedPercent: number | null = null;
+                    const progressThrottleMs = options.progressThrottleMs || 200;
+                    let lastProgressTime = Date.now();
 
-            // Set up progress tracking
-            if (onProgress && typeof response.on === 'function') {
-                if (!isNaN(totalBytes)) {
-                    console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
-                }
+                    if (options.onProgress) {
+                        // The chunk size here is dynamic and determined by:
+                        // 1. Node.js's HTTP client internal buffering
+                        // 2. OS network buffers and TCP packet sizes
+                        // 3. Server configuration and how it streams data
+                        // The size is not fixed and varies based on network conditions
+                        (response.data as Stream).on('data', (chunk) => {
+                            bytesReceived += chunk.length;
 
-                response.on('data', (chunk) => {
-                    bytesReceived += chunk.length;
-
-                    onProgress({
-                        bytesReceived,
-                        totalBytes: isNaN(totalBytes) ? null : totalBytes,
-                        percent: isNaN(totalBytes) ? null : Math.round((bytesReceived / totalBytes) * 100)
-                    });
-                });
-            }            // Pipe the response to the file
-            response.pipe(file);
-
-            file.on('finish', () => {
-                // Clean up abort listener on success
-                if (signal && abortHandler) {
-                    signal.removeEventListener('abort', abortHandler);
-                }
-
-                file.close((err) => {
-                    if (err) {
-                        fs.unlink(dest, (unlinkErr) => {
-                            if (unlinkErr) {
-                                console.warn(`Warning: Failed to clean up temporary file '${dest}' after file close error: ${unlinkErr.message}`);
+                            // Calculate percentage, capping at 100% to handle compressed data scenarios
+                            // where decompressed size might exceed the Content-Length header value
+                            let percent = null;
+                            if (!isNaN(totalBytes) && totalBytes > 0) {
+                                if (bytesReceived >= totalBytes) {
+                                    percent = 100; // Cap at 100% if received bytes exceed total bytes
+                                } else {
+                                    percent = Math.round((bytesReceived / totalBytes) * 100);
+                                }
                             }
-                            reject(err);
+
+                            // Throttle progress updates
+                            const now = Date.now();
+                            if (now - lastProgressTime >= progressThrottleMs || percent !== lastReportedPercent) {
+                                lastProgressTime = now;
+                                lastReportedPercent = percent;
+
+                                options.onProgress!({
+                                    bytesReceived,
+                                    totalBytes: isNaN(totalBytes) || totalBytes <= 0 ? null : totalBytes,
+                                    percent
+                                });
+                            }
                         });
-                        return;
                     }
-                    console.log(`Downloaded ${fileUrl} successfully`);
-                    resolve();
-                });
-            });
 
-            file.on('error', (err) => {
-                // Clean up abort listener on file error
-                if (signal && abortHandler) {
-                    signal.removeEventListener('abort', abortHandler);
-                }
+                    // Pipe response to file
+                    (response.data as Stream).pipe(file);
 
-                // Clean up file on error
-                fs.unlink(dest, (unlinkErr) => {
-                    if (unlinkErr) {
-                        console.warn(`Warning: Failed to clean up temporary file '${dest}' after file stream error: ${unlinkErr.message}`);
+                    // Handle file events
+                    file.on('finish', () => {
+                        // Only close the file if it hasn't been closed already
+                        if (fileIsClosed) {
+                            console.log(`Downloaded ${fileUrl} successfully`);
+                            resolve();
+                            return;
+                        }
+
+                        fileIsClosed = true;
+
+                        // Close the file and resolve the promise
+                        file.close((err) => {
+                            if (err) {
+                                return cleanup(err, response);
+                            }
+                            console.log(`Downloaded ${fileUrl} successfully`);
+                            resolve();
+                        });
+                    });
+
+                    file.on('error', (err) => {
+                        cleanup(err, response);
+                    });
+
+                    // Handle stream errors
+                    (response.data as Stream).on('error', (err) => {
+                        cleanup(err, response);
+                    });
+                })
+                .catch(error => {
+                    // Handle axios errors (network issues, timeout, etc.)
+                    if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+                        cleanup(new Error(`Request timed out after ${options.timeout || 30000}ms: ${fileUrl}`), error.response);
+                    } else if (axios.isCancel(error)) {
+                        cleanup(new Error(`Download aborted by user: ${fileUrl}`));
+                    } else {
+                        cleanup(error as Error, axios.isAxiosError(error) ? error.response : undefined);
                     }
-                    reject(err);
                 });
-            });
-        }).on('error', (err) => {
-            // Clean up abort listener on request error
-            if (signal && abortHandler) {
-                signal.removeEventListener('abort', abortHandler);
-            }
-
-            // Clean up file on request error
-            file.close();
-            fs.unlink(dest, (unlinkErr) => {
-                if (unlinkErr) {
-                    console.warn(`Warning: Failed to clean up temporary file '${dest}' after request error: ${unlinkErr.message}`);
-                }
-                reject(err);
-            });
-        });
-
-        // Set up timeout to abort the request if it takes too long
-        req.setTimeout(timeout, () => {
-            req.destroy();
-
-            // Clean up abort listener on timeout
-            if (signal && abortHandler) {
-                signal.removeEventListener('abort', abortHandler);
-            }
-
-            cleanupAndReject(new Error(`Request timed out after ${timeout}ms: ${fileUrl}`));
-        });
+        };
     });
 }
