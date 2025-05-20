@@ -52,6 +52,8 @@ export async function verifyFileChecksum(
     }
 
     // Extract expected hash - typically first part of the line
+    // Split by whitespace characters to parse the format "<hash> <filename>"
+    // Example: "a1b2c3d4e5f6... myfile.zip"
     const parts = checksumLine.trim().split(/\s+/);
     if (!parts[0]) {
         throw new Error(`Invalid checksum format for ${fileName} in ${checksumFilePath}`);
