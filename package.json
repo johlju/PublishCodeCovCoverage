@@ -13,7 +13,7 @@
     "clean": "rimraf dist",
     "package": "./package.sh",
     "prepackage": "npm run test:all",
-    "lint": "eslint ./src --ignore-pattern \"**/(__tests__|__integration_tests__)/**\" --max-warnings=0",
+    "lint": "eslint ./src --ignore-pattern \"**/*.test.ts\" --ignore-pattern \"**/*.tests.ts\" --max-warnings=0",
     "lint:all": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:report": "eslint . --max-warnings=0 -o eslint-report.txt",
