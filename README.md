@@ -1,5 +1,9 @@
 # Custom Azure Pipeline Extension for Codecov.io
 
+[![Build Status](https://dev.azure.com/viscalyx/PublishCodeCovCoverage/_apis/build/status/PublishCodeCovCoverage?branchName=main)](https://dev.azure.com/viscalyx/PublishCodeCovCoverage/_build/latest?definitionId=1&branchName=main)
+[![codecov](https://codecov.io/gh/viscalyx/PublishCodeCovCoverage/branch/main/graph/badge.svg)](https://codecov.io/gh/viscalyx/PublishCodeCovCoverage)
+[![GitHub License](https://img.shields.io/github/license/viscalyx/PublishCodeCovCoverage)](https://github.com/viscalyx/PublishCodeCovCoverage/blob/main/LICENSE)
+
 > [!NOTE]
 > This is an unofficial Azure Pipeline task not affiliated with Codecov.io. It uses the official Codecov CLI from Codecov.io to upload coverage reports.
 
