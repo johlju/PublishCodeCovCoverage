@@ -32,6 +32,7 @@ export function downloadFile(
     progressThrottleMs?: number;
   } = {}
 ): Promise<void> {
+  // eslint-disable-next-line no-console
   console.log(`Downloading ${fileUrl} to ${dest}`);
   return new Promise<void>((resolve, reject) => {
     // Create an abort controller for the axios request
@@ -43,9 +44,11 @@ export function downloadFile(
     if (fs.existsSync(dest)) {
       // By default overwrite is true unless explicitly set to false
       if (options.overwrite === false) {
+        // eslint-disable-next-line no-console
         console.log(`File already exists at '${dest}' and overwrite is false, skipping download`);
         return resolve();
       }
+      // eslint-disable-next-line no-console
       console.log(`File already exists at '${dest}', will be overwritten`);
     }
 
@@ -108,6 +111,7 @@ export function downloadFile(
             stream?.end?.();
           } catch (e) {
             // Ignore errors when destroying the stream
+            // eslint-disable-next-line no-console
             console.warn(`Warning: Failed to destroy stream: ${(e as Error).message}`);
           }
         }
@@ -123,6 +127,7 @@ export function downloadFile(
               // File exists, try to delete it
               fs.unlink(dest, (unlinkErr) => {
                 if (unlinkErr) {
+                  // eslint-disable-next-line no-console
                   console.warn(
                     `Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`
                   );
@@ -143,6 +148,7 @@ export function downloadFile(
                 // File exists, try to delete it
                 fs.unlink(dest, (unlinkErr) => {
                   if (unlinkErr) {
+                    // eslint-disable-next-line no-console
                     console.warn(
                       `Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`
                     );
@@ -178,8 +184,10 @@ export function downloadFile(
 
           if (options.onProgress) {
             if (!isNaN(totalBytes) && totalBytes > 0) {
+              // eslint-disable-next-line no-console
               console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
             } else {
+              // eslint-disable-next-line no-console
               console.log(`Download started - total size unknown (Content-Length header missing)`);
             }
           }
@@ -232,6 +240,7 @@ export function downloadFile(
           file.on('finish', () => {
             // Only close the file if it hasn't been closed already
             if (fileIsClosed) {
+              // eslint-disable-next-line no-console
               console.log(`Downloaded ${fileUrl} successfully`);
               resolve();
               return;
@@ -244,6 +253,7 @@ export function downloadFile(
               if (err) {
                 return cleanup(err, response);
               }
+              // eslint-disable-next-line no-console
               console.log(`Downloaded ${fileUrl} successfully`);
               resolve();
             });
