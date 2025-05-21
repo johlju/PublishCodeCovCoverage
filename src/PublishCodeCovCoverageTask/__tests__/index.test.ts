@@ -252,7 +252,7 @@ describe('PublishCodeCovCoverage', () => {
     expect(tl.setResourcePath).not.toHaveBeenCalled();
   });
 
-  test('should use -s parameter when no coverageFileName is provided', async () => {
+  test('should use --coverage-files-search-root-folder parameter when no coverageFileName is provided', async () => {
     // Mock no coverage file name provided
     const testResultFolder = 'testResults';
     (tl.getInput as jest.Mock).mockImplementation((name: string) => {
@@ -273,11 +273,11 @@ describe('PublishCodeCovCoverage', () => {
     );
     expect(uploadCallIndex).toBeGreaterThan(-1);
 
-    // Verify the arguments array contains the -s parameter with the correct path
+    // Verify the arguments array contains the --coverage-files-search-root-folder parameter with the correct path
     const args = execFileSyncCalls[uploadCallIndex][1];
-    expect(args).toContain('-s');
+    expect(args).toContain('--coverage-files-search-root-folder');
     expect(args).toContain(`/original/working/directory/${testResultFolder}`);
-    expect(args).not.toContain('-f');
+    expect(args).not.toContain('--coverage-files-search-direct-file');
   });
 
   test('should use -s when no files found but not fail', async () => {
@@ -290,13 +290,13 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Should still succeed since we're using -s parameter now
+    // Should still succeed since we're using --coverage-files-search-root-folder parameter now
     expect(tl.setResult).toHaveBeenCalledWith(
       tl.TaskResult.Succeeded,
       'Code coverage uploaded successfully'
     );
 
-    // Verify it used the -s parameter with execFileSync
+    // Verify it used the --coverage-files-search-root-folder parameter with execFileSync
     const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
     const uploadCallIndex = execFileSyncCalls.findIndex(
       ([executable, args]: [string, string[]]) =>
@@ -304,7 +304,7 @@ describe('PublishCodeCovCoverage', () => {
     );
 
     const args = execFileSyncCalls[uploadCallIndex][1];
-    expect(args).toContain('-s');
+    expect(args).toContain('--coverage-files-search-root-folder');
     expect(args).toContain('/original/working/directory/testResults');
   });
 
@@ -422,7 +422,7 @@ describe('PublishCodeCovCoverage', () => {
     expect(execFileSyncCalls[uploadCallIndex][1]).not.toContain('--verbose');
   });
 
-  test('should use -f parameter with the specified coverage file path if it exists', async () => {
+  test('should use --coverage-files-search-direct-file parameter with the specified coverage file path if it exists', async () => {
     // Mock specific coverage file name provided
     const coverageFileName = 'custom-coverage.xml';
     (tl.getInput as jest.Mock).mockImplementation((name: string) => {
@@ -439,7 +439,7 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Verify that execFileSync was called with -f and the expected file path
+    // Verify that execFileSync was called with --coverage-files-search-direct-file and the expected file path
     const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
     const uploadCallIndex = execFileSyncCalls.findIndex(
       ([executable, args]: [string, string[]]) =>
@@ -448,9 +448,9 @@ describe('PublishCodeCovCoverage', () => {
 
     expect(uploadCallIndex).toBeGreaterThan(-1);
     const args = execFileSyncCalls[uploadCallIndex][1];
-    expect(args).toContain('-f');
+    expect(args).toContain('--coverage-files-search-direct-file');
     expect(args).toContain(expectedPath);
-    expect(args).not.toContain('-s'); // Should not contain -s parameter
+    expect(args).not.toContain('--coverage-files-search-root-folder'); // Should not contain --coverage-files-search-root-folder parameter
   });
 
   test('should throw error when specified file does not exist', async () => {
@@ -496,7 +496,7 @@ describe('PublishCodeCovCoverage', () => {
 
     await run();
 
-    // Verify that execFileSync was called with -f and the correct path
+    // Verify that execFileSync was called with --coverage-files-search-direct-file and the correct path
     const execFileSyncCalls = (execFileSync as jest.Mock).mock.calls;
     const uploadCallIndex = execFileSyncCalls.findIndex(
       ([executable, args]: [string, string[]]) =>
@@ -504,9 +504,9 @@ describe('PublishCodeCovCoverage', () => {
     );
     expect(uploadCallIndex).toBeGreaterThan(-1);
     const args = execFileSyncCalls[uploadCallIndex][1];
-    expect(args).toContain('-f');
+    expect(args).toContain('--coverage-files-search-direct-file');
     expect(args).toContain(coverageFilePath);
-    expect(args).not.toContain('-s');
+    expect(args).not.toContain('--coverage-files-search-root-folder'); // Should not contain --coverage-files-search-root-folder parameter
   });
 
   test('should fail when neither testResultFolderName nor coverageFileName is specified', async () => {
@@ -555,7 +555,7 @@ describe('PublishCodeCovCoverage', () => {
 
     expect(uploadCallIndex).toBeGreaterThan(-1);
     const args = execFileSyncCalls[uploadCallIndex][1];
-    expect(args).toContain('-s');
+    expect(args).toContain('--coverage-files-search-root-folder');
     expect(args).toContain('/original/working/directory/testResults');
     expect(args).toContain('--network-root-folder');
     expect(args).toContain(`/original/working/directory/${networkRootFolder}`);
@@ -771,7 +771,11 @@ describe('PublishCodeCovCoverage', () => {
   test('should verify file checksum using the mocked function', async () => {
     await run();
     // Check that verifyFileChecksum was called with the correct arguments
-    expect(verifyFileChecksum).toHaveBeenCalledWith('codecov', 'codecov.SHA256SUM', expect.any(Function));
+    expect(verifyFileChecksum).toHaveBeenCalledWith(
+      'codecov',
+      'codecov.SHA256SUM',
+      expect.any(Function)
+    );
     // Advanced check: the logger function should delegate to logger.info
     const call = (verifyFileChecksum as jest.Mock).mock.calls.find(
       ([file, sum, loggerFn]) => file === 'codecov' && sum === 'codecov.SHA256SUM'

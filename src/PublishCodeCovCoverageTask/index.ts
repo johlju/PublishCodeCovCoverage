@@ -156,7 +156,7 @@ export async function run(): Promise<void> {
     if (coverageFileName) {
       if (actualCoverageFilePath) {
         logger.info(`Uploading specific coverage file: ${actualCoverageFilePath}`);
-        args.push('-f', actualCoverageFilePath);
+        args.push('--coverage-files-search-direct-file', actualCoverageFilePath);
         args.push('--disable-search');
       }
     }
@@ -164,7 +164,7 @@ export async function run(): Promise<void> {
     else if (testResultFolderName) {
       if (resolvedTestResultFolderPath) {
         logger.info(`Uploading from directory: ${resolvedTestResultFolderPath}`);
-        args.push('-s', resolvedTestResultFolderPath);
+        args.push('--coverage-files-search-root-folder', resolvedTestResultFolderPath);
       }
     } else {
       throw new Error('Either coverageFileName or testResultFolderName must be specified');
