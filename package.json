@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Azure Pipeline task for uploading code coverage to Codecov.io",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "build": "tsc",
     "prebuild": "npm run clean",
