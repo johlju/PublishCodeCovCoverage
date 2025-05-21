@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as https from 'node:https';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import logger from '../utils/logger';
 
 // Mock dependencies
 jest.mock('azure-pipelines-task-lib/task');
@@ -33,9 +34,11 @@ describe('PublishCodeCovCoverage', () => {
     // Set NODE_ENV for testing the unhandled error handler
     process.env.NODE_ENV = 'test';
 
-    // Suppress console output
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    // Suppress logger output
+    jest.spyOn(logger, 'info').mockImplementation(() => logger);
+    jest.spyOn(logger, 'error').mockImplementation(() => logger);
+    jest.spyOn(logger, 'warn').mockImplementation(() => logger);
+    jest.spyOn(logger, 'debug').mockImplementation(() => logger);
 
     // Mock task lib
     (tl.getInput as jest.Mock).mockImplementation((name: string) => {
@@ -323,8 +326,8 @@ describe('PublishCodeCovCoverage', () => {
   });
 
   test('handles unhandled errors at the top level and clears token if set by task', async () => {
-    // Create a spy on console.error
-    const consoleSpy = jest.spyOn(console, 'error');
+    // Create a spy on logger.error
+    const loggerErrorSpy = jest.spyOn(logger, 'error');
     // Set up a token and the tokenWasSetByTask flag
     process.env.CODECOV_TOKEN = 'test-token-for-unhandled-error';
     setTokenWasSetByTask(true);
@@ -338,7 +341,7 @@ describe('PublishCodeCovCoverage', () => {
       runCatchHandler(fakeError);
 
       // Verify the error was logged correctly
-      expect(consoleSpy).toHaveBeenCalledWith('Unhandled error:', fakeError);
+      expect(loggerErrorSpy).toHaveBeenCalledWith('Unhandled error:', fakeError);
       expect(tl.setResult).toHaveBeenCalledWith(
         tl.TaskResult.Failed,
         'Unhandled error: Test unhandled error'
@@ -348,7 +351,7 @@ describe('PublishCodeCovCoverage', () => {
       expect(process.env.CODECOV_TOKEN).toBeUndefined();
     } else {
       // If the handler isn't available, mark the test as passed
-      console.log('Skipping unhandled error test as handler is not exposed');
+      logger.info('Skipping unhandled error test as handler is not exposed');
     }
   });
 
@@ -766,7 +769,20 @@ describe('PublishCodeCovCoverage', () => {
   });
 
   test('should verify file checksum using the mocked function', async () => {
-    await run(); // Verify that verifyFileChecksum was called with the correct parameters
-    expect(verifyFileChecksum).toHaveBeenCalledWith('codecov', 'codecov.SHA256SUM', console.log);
+    await run();
+    // Check that verifyFileChecksum was called with the correct arguments
+    expect(verifyFileChecksum).toHaveBeenCalledWith('codecov', 'codecov.SHA256SUM', expect.any(Function));
+    // Advanced check: the logger function should delegate to logger.info
+    const call = (verifyFileChecksum as jest.Mock).mock.calls.find(
+      ([file, sum, loggerFn]) => file === 'codecov' && sum === 'codecov.SHA256SUM'
+    );
+    expect(call).toBeTruthy();
+    const loggerFn = call && call[2];
+    // Spy on logger.info
+    const infoSpy = jest.spyOn(logger, 'info');
+    // Call the logger function with a test message
+    const testMsg = 'test-message';
+    loggerFn(testMsg);
+    expect(infoSpy).toHaveBeenCalledWith(testMsg);
   });
 });

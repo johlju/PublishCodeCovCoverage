@@ -7,6 +7,7 @@ import { quoteCommandArgument } from './utils/commandUtils';
 import { clearSensitiveEnvironmentVariables, setTokenWasSetByTask } from './utils/environmentUtils';
 import { downloadFile } from './utils/webUtils';
 import { handleUnhandledError } from './utils/errorUtils';
+import logger from './utils/logger';
 
 export async function run(): Promise<void> {
   try {
@@ -29,14 +30,11 @@ export async function run(): Promise<void> {
 
     // Log token source for debugging
     if (codecovTokenInput !== '') {
-      // eslint-disable-next-line no-console
-      console.log('Using Codecov token from task input parameter');
+      logger.info('Using Codecov token from task input parameter');
     } else if (codecovTokenFromVariable) {
-      // eslint-disable-next-line no-console
-      console.log('Using Codecov token from pipeline variable');
+      logger.info('Using Codecov token from pipeline variable');
     } else if (process.env.CODECOV_TOKEN) {
-      // eslint-disable-next-line no-console
-      console.log('Using Codecov token from pre-existing environment variable');
+      logger.info('Using Codecov token from pre-existing environment variable');
     }
 
     // If value provided as input or pipeline variable, override process.env.CODECOV_TOKEN
@@ -46,16 +44,13 @@ export async function run(): Promise<void> {
       if (!existingToken) {
         process.env.CODECOV_TOKEN = codecovToken;
         setTokenWasSetByTask(true);
-        // eslint-disable-next-line no-console
-        console.log('Environment variable CODECOV_TOKEN has been set');
+        logger.info('Environment variable CODECOV_TOKEN has been set');
       } else if (existingToken !== codecovToken) {
         process.env.CODECOV_TOKEN = codecovToken;
         setTokenWasSetByTask(true);
-        // eslint-disable-next-line no-console
-        console.log('Environment variable CODECOV_TOKEN has been overridden with new value');
+        logger.info('Environment variable CODECOV_TOKEN has been overridden with new value');
       } else {
-        // eslint-disable-next-line no-console
-        console.log(
+        logger.info(
           'Environment variable CODECOV_TOKEN already has the correct value, not changing'
         );
       }
@@ -65,30 +60,23 @@ export async function run(): Promise<void> {
       );
     }
 
-    // eslint-disable-next-line no-console
-    console.log('Uploading code coverage to Codecov.io');
-    // eslint-disable-next-line no-console
-    console.log(`Test result folder: ${testResultFolderName || 'not specified'}`);
+    logger.info('Uploading code coverage to Codecov.io');
+    logger.info(`Test result folder: ${testResultFolderName || 'not specified'}`);
     if (coverageFileName) {
-      // eslint-disable-next-line no-console
-      console.log(
+      logger.info(
         `Coverage file name: ${coverageFileName}${!testResultFolderName ? ' (using as full path)' : ''}`
       );
     } else {
-      // eslint-disable-next-line no-console
-      console.log(`Coverage file name: not specified - will use test result folder`);
+      logger.info(`Coverage file name: not specified - will use test result folder`);
     }
     if (networkRootFolder) {
-      // eslint-disable-next-line no-console
-      console.log(`Network root folder: ${networkRootFolder}`);
+      logger.info(`Network root folder: ${networkRootFolder}`);
     }
-    // eslint-disable-next-line no-console
-    console.log(`Verbose mode: ${verbose ? 'enabled' : 'disabled'}`);
+    logger.info(`Verbose mode: ${verbose ? 'enabled' : 'disabled'}`);
 
     // Save the original working directory to resolve relative paths later
     const originalWorkingDir = process.cwd();
-    // eslint-disable-next-line no-console
-    console.log(`Original working directory: ${originalWorkingDir}`);
+    logger.debug(`Original working directory: ${originalWorkingDir}`);
 
     // URLs for the Codecov CLI
     const cliUrl = 'https://cli.codecov.io/latest/linux/codecov';
@@ -106,36 +94,28 @@ export async function run(): Promise<void> {
 
     // Change to working directory
     process.chdir(workingDir);
-    // eslint-disable-next-line no-console
-    console.log(`Working directory: ${workingDir}`);
+    logger.info(`Working directory: ${workingDir}`);
 
     // Download necessary files
-    // eslint-disable-next-line no-console
-    console.log('Downloading PGP keys...');
+    logger.info('Downloading PGP keys...');
     await downloadFile(pgpKeysUrl, 'pgp_keys.asc');
-    // eslint-disable-next-line no-console
-    console.log('Importing PGP keys...');
+    logger.info('Importing PGP keys...');
     execFileSync('gpg', ['--no-default-keyring', '--import', 'pgp_keys.asc'], { stdio: 'inherit' });
 
-    // eslint-disable-next-line no-console
-    console.log('Downloading Codecov CLI...');
+    logger.info('Downloading Codecov CLI...');
     await downloadFile(cliUrl, 'codecov');
     await downloadFile(sha256sumUrl, 'codecov.SHA256SUM');
     await downloadFile(sha256sumSigUrl, 'codecov.SHA256SUM.sig');
 
-    // eslint-disable-next-line no-console
-    console.log('Verifying Codecov CLI...');
+    logger.info('Verifying Codecov CLI...');
     execFileSync('gpg', ['--verify', 'codecov.SHA256SUM.sig', 'codecov.SHA256SUM'], {
       stdio: 'inherit',
     });
-    // eslint-disable-next-line no-console
-    await verifyFileChecksum('codecov', 'codecov.SHA256SUM', console.log);
+    await verifyFileChecksum('codecov', 'codecov.SHA256SUM', logger.info.bind(logger));
     fs.chmodSync('codecov', '755');
-
-    // Check if coverage file exists
-    let actualCoverageFilePath = '';
-    let resolvedTestResultFolderPath = '';
-
+    // Prepare coverage file or directory
+    let resolvedTestResultFolderPath: string | undefined;
+    let actualCoverageFilePath: string | undefined;
     if (coverageFileName) {
       // If testResultFolderName is provided, join it with coverageFileName
       // Otherwise, treat coverageFileName as a full path
@@ -174,15 +154,17 @@ export async function run(): Promise<void> {
 
     // If coverageFileName was provided, use -f with the file path
     if (coverageFileName) {
-      // eslint-disable-next-line no-console
-      console.log(`Uploading specific coverage file: ${actualCoverageFilePath}`);
-      args.push('-f', actualCoverageFilePath);
+      if (actualCoverageFilePath) {
+        logger.info(`Uploading specific coverage file: ${actualCoverageFilePath}`);
+        args.push('-f', actualCoverageFilePath);
+      }
     }
     // Otherwise use -s with the testResultFolderName directory if it's specified
     else if (testResultFolderName) {
-      // eslint-disable-next-line no-console
-      console.log(`Uploading from directory: ${resolvedTestResultFolderPath}`);
-      args.push('-s', resolvedTestResultFolderPath);
+      if (resolvedTestResultFolderPath) {
+        logger.info(`Uploading from directory: ${resolvedTestResultFolderPath}`);
+        args.push('-s', resolvedTestResultFolderPath);
+      }
     } else {
       throw new Error('Either coverageFileName or testResultFolderName must be specified');
     }
@@ -193,23 +175,16 @@ export async function run(): Promise<void> {
       const resolvedNetworkRootFolder = path.isAbsolute(networkRootFolder)
         ? networkRootFolder
         : path.resolve(originalWorkingDir, networkRootFolder);
-
-      // eslint-disable-next-line no-console
-      console.log(`Adding network root folder: ${resolvedNetworkRootFolder}`);
+      logger.info(`Adding network root folder: ${resolvedNetworkRootFolder}`);
       args.push('--network-root-folder', resolvedNetworkRootFolder);
     }
-
-    // Log the command and arguments with proper quoting and escaping for readability
-    // eslint-disable-next-line no-console
-    console.log(
+    logger.debug(
       `Executing command: ./codecov ${args.map((arg) => quoteCommandArgument(arg)).join(' ')}`
     );
     execFileSync('./codecov', args, {
       stdio: 'inherit',
     });
-
-    // eslint-disable-next-line no-console
-    console.log('Upload completed successfully');
+    logger.info('Upload completed successfully');
 
     // Clear sensitive environment variables before exiting
     clearSensitiveEnvironmentVariables();
@@ -217,15 +192,12 @@ export async function run(): Promise<void> {
     tl.setResult(tl.TaskResult.Succeeded, 'Code coverage uploaded successfully');
   } catch (err: unknown) {
     const error = err as Error & { stdout?: string; stderr?: string; message: string };
-    // eslint-disable-next-line no-console
-    console.error(`Error: ${error.message}`);
+    logger.error(`Error: ${error.message}`);
     if (error.stdout) {
-      // eslint-disable-next-line no-console
-      console.log(`stdout: ${error.stdout}`);
+      logger.info(`stdout: ${error.stdout}`);
     }
     if (error.stderr) {
-      // eslint-disable-next-line no-console
-      console.error(`stderr: ${error.stderr}`);
+      logger.error(`stderr: ${error.stderr}`);
     }
 
     // Clear sensitive environment variables even on error

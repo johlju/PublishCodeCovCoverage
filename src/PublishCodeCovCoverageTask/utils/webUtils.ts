@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import axios, { type AxiosResponse } from 'axios';
 import type { Stream } from 'node:stream';
+import logger from './logger';
 
 /**
  * Downloads a file from a URL to a local destination
@@ -32,8 +33,7 @@ export function downloadFile(
     progressThrottleMs?: number;
   } = {}
 ): Promise<void> {
-  // eslint-disable-next-line no-console
-  console.log(`Downloading ${fileUrl} to ${dest}`);
+  logger.info(`Downloading ${fileUrl} to ${dest}`);
   return new Promise<void>((resolve, reject) => {
     // Create an abort controller for the axios request
     const controller = new AbortController();
@@ -44,12 +44,10 @@ export function downloadFile(
     if (fs.existsSync(dest)) {
       // By default overwrite is true unless explicitly set to false
       if (options.overwrite === false) {
-        // eslint-disable-next-line no-console
-        console.log(`File already exists at '${dest}' and overwrite is false, skipping download`);
+        logger.info(`File already exists at '${dest}' and overwrite is false, skipping download`);
         return resolve();
       }
-      // eslint-disable-next-line no-console
-      console.log(`File already exists at '${dest}', will be overwritten`);
+      logger.info(`File already exists at '${dest}', will be overwritten`);
     }
 
     // Ensure parent directory exists
@@ -111,8 +109,7 @@ export function downloadFile(
             stream?.end?.();
           } catch (e) {
             // Ignore errors when destroying the stream
-            // eslint-disable-next-line no-console
-            console.warn(
+            logger.warn(
               `Warning: Failed to destroy stream: ${e instanceof Error ? e.message : String(e)}`
             );
           }
@@ -129,8 +126,7 @@ export function downloadFile(
               // File exists, try to delete it
               fs.unlink(dest, (unlinkErr) => {
                 if (unlinkErr) {
-                  // eslint-disable-next-line no-console
-                  console.warn(
+                  logger.warn(
                     `Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`
                   );
                 }
@@ -150,8 +146,7 @@ export function downloadFile(
                 // File exists, try to delete it
                 fs.unlink(dest, (unlinkErr) => {
                   if (unlinkErr) {
-                    // eslint-disable-next-line no-console
-                    console.warn(
+                    logger.warn(
                       `Warning: Failed to clean up temporary file '${dest}': ${unlinkErr.message}`
                     );
                   }
@@ -184,11 +179,9 @@ export function downloadFile(
 
           if (options.onProgress) {
             if (totalBytes !== null && totalBytes > 0) {
-              // eslint-disable-next-line no-console
-              console.log(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+              logger.info(`Total download size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
             } else {
-              // eslint-disable-next-line no-console
-              console.log(`Download started - total size unknown (Content-Length header missing)`);
+              logger.info(`Download started - total size unknown (Content-Length header missing)`);
             }
           }
 
@@ -242,8 +235,7 @@ export function downloadFile(
           file.on('finish', () => {
             // Only close the file if it hasn't been closed already
             if (fileIsClosed) {
-              // eslint-disable-next-line no-console
-              console.log(`Downloaded ${fileUrl} successfully`);
+              logger.info(`Downloaded ${fileUrl} successfully`);
               resolve();
               return;
             }
@@ -255,8 +247,7 @@ export function downloadFile(
               if (err) {
                 return cleanup(err, response);
               }
-              // eslint-disable-next-line no-console
-              console.log(`Downloaded ${fileUrl} successfully`);
+              logger.info(`Downloaded ${fileUrl} successfully`);
               resolve();
             });
           });
