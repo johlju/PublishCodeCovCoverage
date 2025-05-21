@@ -157,6 +157,7 @@ export async function run(): Promise<void> {
       if (actualCoverageFilePath) {
         logger.info(`Uploading specific coverage file: ${actualCoverageFilePath}`);
         args.push('-f', actualCoverageFilePath);
+        args.push('--disable-search');
       }
     }
     // Otherwise use -s with the testResultFolderName directory if it's specified
