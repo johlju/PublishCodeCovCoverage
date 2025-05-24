@@ -3,9 +3,9 @@ permissions:
   contents: read
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build-and-test:
@@ -21,6 +21,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Format code
+        run: npm run format
+
+      - name: Lint code
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Clean
+        run: npm run clean
+
+      - name: Build
+        run: npm run build
+
       - name: Package
         run: npm run package
 
@@ -28,7 +46,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ vars.CODECOV_TOKEN }}
           files: ./junit.xml, ./integration-junit.xml
           flags: unit
           fail_ci_if_error: true
@@ -44,4 +62,6 @@ jobs:
           INPUT_TESTRESULTFOLDERNAME: '${{ github.workspace }}/coverage'
           INPUT_NETWORKROOTFOLDER: '${{ github.workspace }}'
           INPUT_VERBOSE: 'true'
-          INPUT_CODECOVTOKEN: '${{ secrets.CODECOV_TOKEN }}'
+          INPUT_CODECOVTOKEN: '${{ vars.CODECOV_TOKEN }}'
+          INPUT_FLAG: 'unit'
+          INPUT_DRYRUN: 'true'

@@ -1,47 +1,70 @@
 trigger:
   branches:
     include:
-    - main
+      - main
   paths:
     include:
-    - src/**
+      - src/**
   tags:
     include:
-    - "v*"
+      - 'v*'
     exclude:
-    - "*-*"
+      - '*-*'
 
 pool:
   vmImage: 'ubuntu-latest'
 
 jobs:
-- job: PublishCodeCovCoverage
-  steps:
-  - task: NodeTool@0
-    inputs:
-      versionSpec: '22.x'
-      displayName: 'Install Node.js 22'
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '5.x'
-      installationPath: $(Agent.ToolsDirectory)/dotnet
-  - script: |
-      npm ci
-      npm run build
-    displayName: 'Run tests'
-  - task: PublishTestResults@2
-    inputs:
-      testResultsFormat: 'JUnit'
-      testResultsFiles: 'junit.xml'
-      searchFolder: '$(System.DefaultWorkingDirectory)'
-      mergeTestResults: true
-      testRunTitle: 'Unit Tests'
-    condition: succeededOrFailed()
-  - task: PublishCodeCovCoverage@1
-    displayName: 'Upload code coverage to Codecov.io'
-    inputs:
-      testResultFolderName: '$(Build.SourcesDirectory)/coverage'
-      verbose: true
-    env:
-      CODECOV_TOKEN: $(CODECOV_TOKEN)
+  - job: PublishCodeCovCoverage
+    steps:
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '22.x'
+          displayName: 'Install Node.js 22'
+      - task: UseDotNet@2
+        inputs:
+          packageType: 'sdk'
+          version: '5.x'
+          installationPath: $(Agent.ToolsDirectory)/dotnet
+      - script: |
+          npm ci
+        displayName: 'Install dependencies'
+      - script: |
+          npm run format
+        displayName: 'Format code'
+      - script: |
+          npm run lint
+        displayName: 'Lint code'
+      - script: |
+          npm run test
+        displayName: 'Run tests'
+      - script: |
+          npm run test:integration
+        displayName: 'Run integration tests'
+      - script: |
+          npm run clean
+          npm run build
+        displayName: 'Build project'
+      - script: |
+          npm run package
+        displayName: 'Run package'
+      - task: PublishTestResults@2
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: 'junit.xml'
+          searchFolder: '$(System.DefaultWorkingDirectory)'
+          mergeTestResults: true
+          testRunTitle: 'Unit Tests'
+        condition: succeededOrFailed()
+      - task: PublishCodeCovCoverage@1
+        displayName: 'Upload code coverage to Codecov.io'
+        inputs:
+          # Pass the test result folder name containing coverage files
+          # Using absolute path to ensure we're pointing to the right coverage directory
+          testResultFolderName: '$(Build.SourcesDirectory)/coverage'
+          # Pass the project root folder where source folder is located
+          networkRootFolder: '$(Build.SourcesDirectory)'
+          flag: 'unit'
+          verbose: true
+        env:
+          CODECOV_TOKEN: $(CODECOV_TOKEN)

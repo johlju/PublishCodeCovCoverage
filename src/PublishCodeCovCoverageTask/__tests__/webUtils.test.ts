@@ -14,8 +14,8 @@ jest.mock('node:fs', () => {
     existsSync: jest.fn(),
     constants: { F_OK: 1 },
     promises: {
-      mkdir: jest.fn().mockResolvedValue(undefined)
-    }
+      mkdir: jest.fn().mockResolvedValue(undefined),
+    },
   };
   return mockFs;
 });
@@ -106,7 +106,7 @@ describe('webUtils', () => {
       mockAxios.mockResolvedValueOnce({
         status: 200,
         headers: { 'content-length': '1024' },
-        data: mockDataStream
+        data: mockDataStream,
       });
 
       // Call downloadFile function with a path that includes directories
@@ -125,7 +125,9 @@ describe('webUtils', () => {
       // Wait for the download to complete
       await downloadPromise;
       // Verify the directory was created asynchronously
-      expect(mockFs.promises.mkdir).toHaveBeenCalledWith('/path/to/nested/directory', { recursive: true });
+      expect(mockFs.promises.mkdir).toHaveBeenCalledWith('/path/to/nested/directory', {
+        recursive: true,
+      });
       expect(mockFs.createWriteStream).toHaveBeenCalledWith('/path/to/nested/directory/file.zip');
     });
 
@@ -135,10 +137,11 @@ describe('webUtils', () => {
       mockFs.promises.mkdir.mockRejectedValueOnce(dirError);
 
       // Call downloadFile and expect it to reject due to directory creation failure
-      await expect(downloadFile(
-        'https://example.com/file.zip',
-        '/path/to/error/directory/file.zip'
-      )).rejects.toThrow('Failed to create directory \'/path/to/error/directory\': Directory creation failed');
+      await expect(
+        downloadFile('https://example.com/file.zip', '/path/to/error/directory/file.zip')
+      ).rejects.toThrow(
+        "Failed to create directory '/path/to/error/directory': Directory creation failed"
+      );
 
       // Verify that createWriteStream was not called
       expect(mockFs.createWriteStream).not.toHaveBeenCalled();
@@ -151,7 +154,7 @@ describe('webUtils', () => {
       mockAxios.mockResolvedValueOnce({
         status: 200,
         headers: { 'content-length': '1024' },
-        data: mockDataStream
+        data: mockDataStream,
       });
 
       // Call downloadFile function
@@ -176,13 +179,15 @@ describe('webUtils', () => {
 
       // Verify the expected calls were made
       expect(mockFs.createWriteStream).toHaveBeenCalledWith('/path/to/destination.zip');
-      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
-        method: 'GET',
-        url: 'https://example.com/file.zip',
-        responseType: 'stream',
-        timeout: 30000,
-        maxRedirects: 5
-      }));
+      expect(mockAxios).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'GET',
+          url: 'https://example.com/file.zip',
+          responseType: 'stream',
+          timeout: 30000,
+          maxRedirects: 5,
+        })
+      );
       expect(mockDataStream.pipe).toHaveBeenCalledWith(mockFileStream);
     });
 
@@ -190,8 +195,8 @@ describe('webUtils', () => {
       // Test for 204 No Content
       mockAxios.mockResolvedValueOnce({
         status: 204, // No Content
-        headers: { }, // No content-length for 204
-        data: mockDataStream
+        headers: {}, // No content-length for 204
+        data: mockDataStream,
       });
 
       // Call downloadFile function for 204
@@ -211,9 +216,11 @@ describe('webUtils', () => {
       await downloadPromise204;
 
       // Verify the download was successful with status 204
-      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
-        url: 'https://example.com/empty-resource'
-      }));
+      expect(mockAxios).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://example.com/empty-resource',
+        })
+      );
 
       jest.clearAllMocks();
 
@@ -221,7 +228,7 @@ describe('webUtils', () => {
       mockAxios.mockResolvedValueOnce({
         status: 206, // Partial Content
         headers: { 'content-length': '512', 'content-range': 'bytes 0-511/1024' },
-        data: mockDataStream
+        data: mockDataStream,
       });
 
       // Call downloadFile function for 206
@@ -244,9 +251,11 @@ describe('webUtils', () => {
       await downloadPromise206;
 
       // Verify the download was successful with status 206
-      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
-        url: 'https://example.com/partial-content'
-      }));
+      expect(mockAxios).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://example.com/partial-content',
+        })
+      );
     });
 
     test('should handle progress tracking', async () => {
@@ -254,11 +263,11 @@ describe('webUtils', () => {
       mockAxios.mockResolvedValueOnce({
         status: 200,
         headers: { 'content-length': '1000' },
-        data: mockDataStream
+        data: mockDataStream,
       });
 
       // Progress tracking mock
-      const onProgressMock = jest.fn();      // Call downloadFile function with progress tracking
+      const onProgressMock = jest.fn(); // Call downloadFile function with progress tracking
       const downloadPromise = downloadFile(
         'https://example.com/file.zip',
         '/path/to/destination.zip',
@@ -289,25 +298,27 @@ describe('webUtils', () => {
       expect(onProgressMock).toHaveBeenNthCalledWith(1, {
         bytesReceived: 250,
         totalBytes: 1000,
-        percent: 25
+        percent: 25,
       });
       expect(onProgressMock).toHaveBeenNthCalledWith(2, {
         bytesReceived: 500,
         totalBytes: 1000,
-        percent: 50
+        percent: 50,
       });
       expect(onProgressMock).toHaveBeenNthCalledWith(3, {
         bytesReceived: 1000,
         totalBytes: 1000,
-        percent: 100
+        percent: 100,
       });
     });
 
     test('should handle HTTP error status', async () => {
       // Setup file handling mocks
-      mockFs.access.mockImplementation((path: string, mode: number, callback: (err: Error | null) => void) => {
-        callback(null); // No error means file exists
-      });
+      mockFs.access.mockImplementation(
+        (path: string, mode: number, callback: (err: Error | null) => void) => {
+          callback(null); // No error means file exists
+        }
+      );
 
       mockFs.unlink.mockImplementation((path: string, callback: (err: Error | null) => void) => {
         callback(null); // No error means file was deleted
@@ -316,27 +327,25 @@ describe('webUtils', () => {
       // Override axios function call with non-200 status
       mockAxios.mockResolvedValueOnce({
         status: 404,
-        statusText: 'Not Found'
+        statusText: 'Not Found',
       });
 
       // Call downloadFile and expect it to reject
-      await expect(downloadFile(
-        'https://example.com/nonexistent.zip',
-        '/path/to/destination.zip'
-      )).rejects.toThrow('Failed to get \'https://example.com/nonexistent.zip\' (404)');
+      await expect(
+        downloadFile('https://example.com/nonexistent.zip', '/path/to/destination.zip')
+      ).rejects.toThrow("Failed to get 'https://example.com/nonexistent.zip' (404)");
 
       // Verify fs.unlink was called to clean up
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        '/path/to/destination.zip',
-        expect.any(Function)
-      );
+      expect(mockFs.unlink).toHaveBeenCalledWith('/path/to/destination.zip', expect.any(Function));
     });
 
     test('should handle network errors', async () => {
       // Setup file handling mocks
-      mockFs.access.mockImplementation((path: string, mode: number, callback: (err: Error | null) => void) => {
-        callback(null); // No error means file exists
-      });
+      mockFs.access.mockImplementation(
+        (path: string, mode: number, callback: (err: Error | null) => void) => {
+          callback(null); // No error means file exists
+        }
+      );
 
       mockFs.unlink.mockImplementation((path: string, callback: (err: Error | null) => void) => {
         callback(null); // No error means file was deleted
@@ -355,23 +364,21 @@ describe('webUtils', () => {
       (mockAxios as any).isCancel.mockReturnValue(false);
 
       // Call downloadFile and expect it to reject
-      await expect(downloadFile(
-        'https://example.com/file.zip',
-        '/path/to/destination.zip'
-      )).rejects.toThrow('Network Error');
+      await expect(
+        downloadFile('https://example.com/file.zip', '/path/to/destination.zip')
+      ).rejects.toThrow('Network Error');
 
       // Verify cleanup was performed
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        '/path/to/destination.zip',
-        expect.any(Function)
-      );
+      expect(mockFs.unlink).toHaveBeenCalledWith('/path/to/destination.zip', expect.any(Function));
     });
 
     test('should handle timeout errors', async () => {
       // Setup file handling mocks
-      mockFs.access.mockImplementation((path: string, mode: number, callback: (err: Error | null) => void) => {
-        callback(null); // No error means file exists
-      });
+      mockFs.access.mockImplementation(
+        (path: string, mode: number, callback: (err: Error | null) => void) => {
+          callback(null); // No error means file exists
+        }
+      );
 
       mockFs.unlink.mockImplementation((path: string, callback: (err: Error | null) => void) => {
         callback(null); // No error means file was deleted
@@ -391,29 +398,28 @@ describe('webUtils', () => {
       (mockAxios as any).isCancel.mockReturnValue(false);
 
       // Call downloadFile with a custom timeout
-      await expect(downloadFile(
-        'https://example.com/file.zip',
-        '/path/to/destination.zip',
-        { timeout: 5000 }
-      )).rejects.toThrow('Request timed out after 5000ms');
+      await expect(
+        downloadFile('https://example.com/file.zip', '/path/to/destination.zip', { timeout: 5000 })
+      ).rejects.toThrow('Request timed out after 5000ms');
 
       // Verify timeout was set correctly
-      expect(mockAxios).toHaveBeenCalledWith(expect.objectContaining({
-        timeout: 5000
-      }));
+      expect(mockAxios).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timeout: 5000,
+        })
+      );
 
       // Verify cleanup was performed
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        '/path/to/destination.zip',
-        expect.any(Function)
-      );
+      expect(mockFs.unlink).toHaveBeenCalledWith('/path/to/destination.zip', expect.any(Function));
     });
 
     test('should handle aborted requests with ERR_CANCELED code', async () => {
       // Setup file handling mocks
-      mockFs.access.mockImplementation((path: string, mode: number, callback: (err: Error | null) => void) => {
-        callback(null); // No error means file exists
-      });
+      mockFs.access.mockImplementation(
+        (path: string, mode: number, callback: (err: Error | null) => void) => {
+          callback(null); // No error means file exists
+        }
+      );
 
       mockFs.unlink.mockImplementation((path: string, callback: (err: Error | null) => void) => {
         callback(null); // No error means file was deleted
@@ -450,17 +456,16 @@ describe('webUtils', () => {
       expect(mockAxios.isCancel).toHaveBeenCalledWith(abortError);
 
       // Verify cleanup was performed
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        '/path/to/destination.zip',
-        expect.any(Function)
-      );
+      expect(mockFs.unlink).toHaveBeenCalledWith('/path/to/destination.zip', expect.any(Function));
     });
 
     test('should handle cancelled requests with axios.isCancel', async () => {
       // Setup file handling mocks
-      mockFs.access.mockImplementation((path: string, mode: number, callback: (err: Error | null) => void) => {
-        callback(null); // No error means file exists
-      });
+      mockFs.access.mockImplementation(
+        (path: string, mode: number, callback: (err: Error | null) => void) => {
+          callback(null); // No error means file exists
+        }
+      );
 
       mockFs.unlink.mockImplementation((path: string, callback: (err: Error | null) => void) => {
         callback(null); // No error means file was deleted
@@ -491,17 +496,16 @@ describe('webUtils', () => {
       expect(mockAxios.isCancel).toHaveBeenCalledWith(cancelError);
 
       // Verify cleanup was performed
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        '/path/to/destination.zip',
-        expect.any(Function)
-      );
+      expect(mockFs.unlink).toHaveBeenCalledWith('/path/to/destination.zip', expect.any(Function));
     });
 
     test('should handle AbortController cancellation via axios.isCancel', async () => {
       // Setup file handling mocks
-      mockFs.access.mockImplementation((path: string, mode: number, callback: (err: Error | null) => void) => {
-        callback(null); // No error means file exists
-      });
+      mockFs.access.mockImplementation(
+        (path: string, mode: number, callback: (err: Error | null) => void) => {
+          callback(null); // No error means file exists
+        }
+      );
 
       mockFs.unlink.mockImplementation((path: string, callback: (err: Error | null) => void) => {
         callback(null); // No error means file was deleted
@@ -526,7 +530,7 @@ describe('webUtils', () => {
               resolve({
                 status: 200,
                 headers: { 'content-length': '1024' },
-                data: mockDataStream
+                data: mockDataStream,
               });
             }
           }, 10);
@@ -552,17 +556,16 @@ describe('webUtils', () => {
       expect(mockAxios.isCancel).toHaveBeenCalledWith(cancelTokenError);
 
       // Verify cleanup was performed
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        '/path/to/destination.zip',
-        expect.any(Function)
-      );
+      expect(mockFs.unlink).toHaveBeenCalledWith('/path/to/destination.zip', expect.any(Function));
     });
 
     test('should handle file stream errors', async () => {
       // Setup file handling mocks
-      mockFs.access.mockImplementation((path: string, mode: number, callback: (err: Error | null) => void) => {
-        callback(null); // No error means file exists
-      });
+      mockFs.access.mockImplementation(
+        (path: string, mode: number, callback: (err: Error | null) => void) => {
+          callback(null); // No error means file exists
+        }
+      );
 
       mockFs.unlink.mockImplementation((path: string, callback: (err: Error | null) => void) => {
         callback(null); // No error means file was deleted
@@ -572,7 +575,7 @@ describe('webUtils', () => {
       mockAxios.mockResolvedValueOnce({
         status: 200,
         headers: { 'content-length': '1024' },
-        data: mockDataStream
+        data: mockDataStream,
       });
 
       // Call downloadFile function
@@ -592,17 +595,16 @@ describe('webUtils', () => {
       await expect(downloadPromise).rejects.toThrow('File write error');
 
       // Verify cleanup was performed
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        '/path/to/destination.zip',
-        expect.any(Function)
-      );
+      expect(mockFs.unlink).toHaveBeenCalledWith('/path/to/destination.zip', expect.any(Function));
     });
 
     test('should prioritize axios.isCancel over ERR_CANCELED code', async () => {
       // Setup file handling mocks
-      mockFs.access.mockImplementation((path: string, mode: number, callback: (err: Error | null) => void) => {
-        callback(null); // No error means file exists
-      });
+      mockFs.access.mockImplementation(
+        (path: string, mode: number, callback: (err: Error | null) => void) => {
+          callback(null); // No error means file exists
+        }
+      );
 
       mockFs.unlink.mockImplementation((path: string, callback: (err: Error | null) => void) => {
         callback(null); // No error means file was deleted
@@ -635,10 +637,7 @@ describe('webUtils', () => {
       // for determining the specific error message for cancellation
 
       // Verify cleanup was performed
-      expect(mockFs.unlink).toHaveBeenCalledWith(
-        '/path/to/destination.zip',
-        expect.any(Function)
-      );
+      expect(mockFs.unlink).toHaveBeenCalledWith('/path/to/destination.zip', expect.any(Function));
     });
   });
 });

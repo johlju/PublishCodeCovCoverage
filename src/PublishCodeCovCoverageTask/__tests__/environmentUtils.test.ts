@@ -1,4 +1,8 @@
-import { clearSensitiveEnvironmentVariables, setTokenWasSetByTask, getTokenWasSetByTask } from '../utils/environmentUtils';
+import {
+  clearSensitiveEnvironmentVariables,
+  setTokenWasSetByTask,
+  getTokenWasSetByTask,
+} from '../utils/environmentUtils';
 
 describe('environmentUtils', () => {
   // Store original env to restore it after each test
@@ -32,7 +36,9 @@ describe('environmentUtils', () => {
 
       // Assert
       expect(process.env.CODECOV_TOKEN).toBeUndefined();
-      expect(consoleLogSpy).toHaveBeenCalledWith('Removing CODECOV_TOKEN environment variable for security');
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Removing CODECOV_TOKEN environment variable for security'
+      );
     });
 
     it('should not remove CODECOV_TOKEN when tokenWasSetByTask is false', () => {
@@ -45,7 +51,9 @@ describe('environmentUtils', () => {
 
       // Assert
       expect(process.env.CODECOV_TOKEN).toBe('test-token');
-      expect(consoleLogSpy).not.toHaveBeenCalledWith('Removing CODECOV_TOKEN environment variable for security');
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(
+        'Removing CODECOV_TOKEN environment variable for security'
+      );
     });
 
     it('should not attempt to remove CODECOV_TOKEN when it does not exist', () => {
@@ -58,7 +66,9 @@ describe('environmentUtils', () => {
 
       // Assert
       expect(process.env.CODECOV_TOKEN).toBeUndefined();
-      expect(consoleLogSpy).not.toHaveBeenCalledWith('Removing CODECOV_TOKEN environment variable for security');
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(
+        'Removing CODECOV_TOKEN environment variable for security'
+      );
     });
   });
 

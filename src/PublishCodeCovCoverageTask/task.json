@@ -1,62 +1,166 @@
 {
-    "id": "44b5baf0-7d04-11ee-b962-0242ac120002",
-    "name": "PublishCodeCovCoverage",
-    "friendlyName": "PublishCodeCovCoverage",
-    "description": "Uploads code coverage reports to Codecov.io",
-    "helpMarkDown": "",
-    "category": "Utility",
-    "author": "Viscalyx",
-    "version": {
-        "Major": 1,
-        "Minor": 0,
-        "Patch": 0
+  "id": "44b5baf0-7d04-11ee-b962-0242ac120002",
+  "name": "PublishCodeCovCoverage",
+  "friendlyName": "Publish CodeCov Coverage",
+  "description": "Uploads code coverage reports to Codecov.io",
+  "helpMarkDown": "",
+  "category": "Utility",
+  "author": "Viscalyx",
+  "version": {
+    "Major": 1,
+    "Minor": 0,
+    "Patch": 0
+  },
+  "instanceNameFormat": "Upload code coverage to Codecov.io",
+  "inputs": [
+    {
+      "name": "testResultFolderName",
+      "type": "string",
+      "label": "Test Result Folder Name",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "The name of the test result folder containing the code coverage report"
     },
-    "instanceNameFormat": "Upload code coverage to Codecov.io",
-    "inputs": [
-        {
-            "name": "testResultFolderName",
-            "type": "string",
-            "label": "Test Result Folder Name",
-            "defaultValue": "",
-            "required": true,
-            "helpMarkDown": "The name of the test result folder containing the code coverage report"
-        },
-        {
-            "name": "verbose",
-            "type": "boolean",
-            "label": "Enable Verbose Output",
-            "defaultValue": "false",
-            "required": false,
-            "helpMarkDown": "Enable verbose output for the Codecov uploader"
-        },
-        {
-            "name": "coverageFileName",
-            "type": "string",
-            "label": "Coverage File Name",
-            "defaultValue": "",
-            "required": false,
-            "helpMarkDown": "The name of the coverage file (e.g., 'coverage.xml'). If specified, argument -f will be used with this file. If not specified, argument -s will be used with the test result folder path."
-        },
-        {
-            "name": "networkRootFolder",
-            "type": "string",
-            "label": "Network Root Folder",
-            "defaultValue": "",
-            "required": false,
-            "helpMarkDown": "Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified."
-        },
-        {
-            "name": "codecovToken",
-            "type": "string",
-            "label": "Codecov Token",
-            "defaultValue": "",
-            "required": false,
-            "helpMarkDown": "The token for uploading coverage to Codecov.io. If not provided, it will look for the CODECOV_TOKEN environment variable."
-        }
-    ],
-    "execution": {
-        "Node20": {
-            "target": "index.js"
-        }
+    {
+      "name": "verbose",
+      "type": "boolean",
+      "label": "Enable Verbose Output",
+      "defaultValue": "false",
+      "required": false,
+      "helpMarkDown": "Enable verbose output for the Codecov uploader"
+    },
+    {
+      "name": "coverageFileName",
+      "type": "string",
+      "label": "Coverage File Name",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "The name of the coverage file (e.g., 'coverage.xml'). If specified, argument -f will be used with this file. If not specified, argument -s will be used with the test result folder path."
+    },
+    {
+      "name": "networkRootFolder",
+      "type": "string",
+      "label": "Network Root Folder",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. Sets the --network-root-folder argument when specified."
+    },
+    {
+      "name": "codecovToken",
+      "type": "string",
+      "label": "Codecov Token",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "The token for uploading coverage to Codecov.io. If not provided, it will look for the CODECOV_TOKEN environment variable."
+    },
+    {
+      "name": "coverageFilesSearchExcludeFolder",
+      "type": "string",
+      "label": "Coverage Files Search Exclude Folder",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Folders to exclude from coverage file search. Passed as --coverage-files-search-exclude-folder."
+    },
+    {
+      "name": "recurseSubmodules",
+      "type": "boolean",
+      "label": "Recurse Submodules",
+      "defaultValue": "false",
+      "required": false,
+      "helpMarkDown": "Whether to enumerate files inside submodules for path-fixing purposes. Passed as --recurse-submodules."
+    },
+    {
+      "name": "buildUrl",
+      "type": "string",
+      "label": "Build URL",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "The URL of the build where this is running. Passed as --build-url."
+    },
+    {
+      "name": "jobCode",
+      "type": "string",
+      "label": "Job Code",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "The job code for the CI run. Passed as --job-code."
+    },
+    {
+      "name": "uploadName",
+      "type": "string",
+      "label": "Upload Name",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Custom defined name of the upload. Visible in Codecov UI. Passed as --name."
+    },
+    {
+      "name": "plugin",
+      "type": "string",
+      "label": "Codecov Plugins",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Plugins to run (xcode, gcov, pycoverage). Passed as --plugin."
+    },
+    {
+      "name": "failOnError",
+      "type": "boolean",
+      "label": "Fail on Error",
+      "defaultValue": "false",
+      "required": false,
+      "helpMarkDown": "Exit with non-zero code in case of error uploading. Passed as --fail-on-error."
+    },
+    {
+      "name": "dryRun",
+      "type": "boolean",
+      "label": "Dry Run",
+      "defaultValue": "false",
+      "required": false,
+      "helpMarkDown": "Don't upload files to Codecov (dry run). Passed as --dry-run."
+    },
+    {
+      "name": "useLegacyUploader",
+      "type": "boolean",
+      "label": "Use Legacy Uploader",
+      "defaultValue": "false",
+      "required": false,
+      "helpMarkDown": "Use the legacy upload endpoint. Passed as --use-legacy-uploader."
+    },
+    {
+      "name": "envVar",
+      "type": "string",
+      "label": "Environment Variables",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Specify environment variables to be included with this build. Passed as --env-var."
+    },
+    {
+      "name": "flag",
+      "type": "string",
+      "label": "Codecov Flag",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Flag the upload to group coverage metrics. Multiple flags allowed. Passed as --flag."
+    },
+    {
+      "name": "branch",
+      "type": "string",
+      "label": "Branch Name",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Branch to which this commit belongs to. Passed as --branch."
+    },
+    {
+      "name": "pullRequestNumber",
+      "type": "string",
+      "label": "Pull Request Number",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Specify the pull request number manually. Passed as --pull-request-number."
     }
+  ],
+  "execution": {
+    "Node20": {
+      "target": "index.js"
+    }
+  }
 }

@@ -5,8 +5,8 @@
  * @returns The quoted argument
  */
 export function quoteCommandArgument(arg: string): string {
-    // Escape backslashes and quotes
-    const escaped = arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    // Wrap in quotes
-    return `"${escaped}"`;
+  // Escape backslashes and quotes
+  const escaped = arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  // Wrap in quotes
+  return `"${escaped}"`;
 }
