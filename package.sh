@@ -1,19 +1,5 @@
 #!/bin/bash
-# Build and package the Azure DevOps extension
-
-# Install dependencies if not already installed
-if [ ! -d "node_modules" ]; then
-  echo "Installing dependencies..."
-  npm install
-fi
-
-# Run tests
-echo "Running tests..."
-npm run test:all
-
-# Compile TypeScript
-echo "Compiling TypeScript..."
-npm run build
+# Package the Azure DevOps extension
 
 # Create extension directory structure
 echo "Creating extension structure..."

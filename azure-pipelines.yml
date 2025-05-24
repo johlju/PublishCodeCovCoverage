@@ -28,6 +28,24 @@ jobs:
           installationPath: $(Agent.ToolsDirectory)/dotnet
       - script: |
           npm ci
+        displayName: 'Install dependencies'
+      - script: |
+          npm run format
+        displayName: 'Format code'
+      - script: |
+          npm run lint
+        displayName: 'Lint code'
+      - script: |
+          npm run test
+        displayName: 'Run tests'
+      - script: |
+          npm run test:integration
+        displayName: 'Run integration tests'
+      - script: |
+          npm run clean
+          npm run build
+        displayName: 'Build project'
+      - script: |
           npm run package
         displayName: 'Run package'
       - task: PublishTestResults@2
@@ -41,7 +59,12 @@ jobs:
       - task: PublishCodeCovCoverage@1
         displayName: 'Upload code coverage to Codecov.io'
         inputs:
+          # Pass the test result folder name containing coverage files
+          # Using absolute path to ensure we're pointing to the right coverage directory
           testResultFolderName: '$(Build.SourcesDirectory)/coverage'
+          # Pass the project root folder where source folder is located
+          networkRootFolder: '$(Build.SourcesDirectory)'
+          flag: 'unit'
           verbose: true
         env:
           CODECOV_TOKEN: $(CODECOV_TOKEN)
