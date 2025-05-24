@@ -247,19 +247,25 @@ export async function run(): Promise<void> {
 
     tl.setResult(tl.TaskResult.Succeeded, 'Code coverage uploaded successfully');
   } catch (err: unknown) {
-    const error = err as Error & { stdout?: string; stderr?: string; message: string };
-    logger.error(`Error: ${error.message}`);
-    if (error.stdout) {
-      logger.info(`stdout: ${error.stdout}`);
-    }
-    if (error.stderr) {
-      logger.error(`stderr: ${error.stderr}`);
-    }
-
     // Clear sensitive environment variables even on error
     clearSensitiveEnvironmentVariables();
 
-    tl.setResult(tl.TaskResult.Failed, error.message);
+    if (err instanceof Error) {
+      logger.error(`Error: ${err.message}`);
+      // Only log stdout/stderr if they exist and are strings
+      const maybeStdout = (err as { stdout?: unknown }).stdout;
+      if (typeof maybeStdout === 'string') {
+        logger.info(`stdout: ${maybeStdout}`);
+      }
+      const maybeStderr = (err as { stderr?: unknown }).stderr;
+      if (typeof maybeStderr === 'string') {
+        logger.error(`stderr: ${maybeStderr}`);
+      }
+      tl.setResult(tl.TaskResult.Failed, err.message);
+    } else {
+      logger.error(`Unknown error: ${JSON.stringify(err)}`);
+      tl.setResult(tl.TaskResult.Failed, 'An unknown error occurred.');
+    }
   }
 }
 
