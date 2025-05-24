@@ -86,7 +86,7 @@
       "helpMarkDown": "The job code for the CI run. Passed as --job-code."
     },
     {
-      "name": "name",
+      "name": "uploadName",
       "type": "string",
       "label": "Upload Name",
       "defaultValue": "",

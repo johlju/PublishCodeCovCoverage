@@ -185,7 +185,7 @@ export async function run(): Promise<void> {
     const recurseSubmodules = tl.getBoolInput('recurseSubmodules', false);
     const buildUrl = tl.getInput('buildUrl', false);
     const jobCode = tl.getInput('jobCode', false);
-    const name = tl.getInput('name', false);
+    const uploadName = tl.getInput('uploadName', false);
     const plugin = tl.getInput('plugin', false);
     const failOnError = tl.getBoolInput('failOnError', false);
     const dryRun = tl.getBoolInput('dryRun', false);
@@ -208,7 +208,7 @@ export async function run(): Promise<void> {
       args.push('--job-code', jobCode);
     }
     if (name) {
-      args.push('--name', name);
+      args.push('--name', uploadName);
     }
     if (plugin) {
       args.push('--plugin', plugin);
