@@ -203,12 +203,8 @@ export function downloadFile(
               // Calculate percentage, capping at 100% to handle compressed data scenarios
               // where decompressed size might exceed the Content-Length header value
               let percent = null;
-              if (totalBytes !== null && totalBytes > 0) {
-                if (bytesReceived >= totalBytes) {
-                  percent = 100; // Cap at 100% if received bytes exceed total bytes
-                } else {
-                  percent = Math.round((bytesReceived / totalBytes) * 100);
-                }
+              if (typeof totalBytes === 'number' && Number.isFinite(totalBytes) && totalBytes > 0) {
+                percent = Math.min(100, Math.round((bytesReceived / totalBytes) * 100));
               }
 
               // Throttle progress updates
