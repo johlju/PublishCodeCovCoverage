@@ -49,3 +49,4 @@ jobs:
           INPUT_VERBOSE: 'true'
           INPUT_CODECOVTOKEN: '${{ secrets.CODECOV_TOKEN }}'
           INPUT_FLAG: 'unit'
+          INPUT_DRYRUN: 'true'
