@@ -123,8 +123,8 @@ The following inputs are supported by the task. All are optional unless otherwis
 
 | Input Name                        | Type     | Description |
 |------------------------------------|----------|-------------|
-| testResultFolderName (required)    | string   | The name of the test result folder containing the code coverage report. |
-| coverageFileName                   | string   | The name of the coverage file (e.g., 'coverage.xml'). If specified, only this file is uploaded. |
+| testResultFolderName (optional)    | string   | The name of the test result folder containing the code coverage report. Required if coverageFileName is not specified. |
+| coverageFileName (optional)        | string   | The name of the coverage file (e.g., 'coverage.xml'). If specified, only this file is uploaded. Required if testResultFolderName is not specified. |
 | networkRootFolder                  | string   | Specify the root folder to help Codecov correctly map the file paths in the report to the repository structure. |
 | codecovToken                       | string   | The token for uploading coverage to Codecov.io. If not provided, it will look for the CODECOV_TOKEN environment variable. |
 | verbose                            | boolean  | Enable verbose output for the Codecov uploader. |
@@ -141,6 +141,11 @@ The following inputs are supported by the task. All are optional unless otherwis
 | flag                               | string   | Flag the upload to group coverage metrics. Multiple flags allowed. Passed as --flag. |
 | branch                             | string   | Branch to which this commit belongs to. Passed as --branch. |
 | pullRequestNumber                  | string   | Specify the pull request number manually. Passed as --pull-request-number. |
+
+> **Note:** You must provide either `testResultFolderName` **or** `coverageFileName`. If both are provided, `coverageFileName` takes precedence and only the specified file will be uploaded. If neither is provided, the task will fail with an error. This allows for two mutually-exclusive modes of operation:
+>
+> - **Directory mode:** Specify `testResultFolderName` to upload all coverage files found in the directory (default behavior).
+> - **Single file mode:** Specify `coverageFileName` to upload only the given file and disable directory search.
 
 You can set these inputs in your YAML pipeline under the `inputs:` section of the task. For example:
 
