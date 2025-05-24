@@ -38,7 +38,16 @@ Before using this extension, ensure you have the following:
    npm install
    ```
 
-4. Run the tests to ensure everything is working:
+4. Lint your code to ensure it meets the project's coding standards:
+
+   ```sh
+   npm run lint         # Check for linting issues
+   npm run lint:fix     # Automatically fix linting issues when possible
+   ```
+
+   For more details about the ESLint setup, refer to the [ESLint Documentation](docs/eslint.md).
+
+5. Run the tests to ensure everything is working:
 
    ```sh
    npm run test         # Run unit tests only
@@ -47,15 +56,6 @@ Before using this extension, ensure you have the following:
    ```
 
    For more details about testing, refer to the [Testing Documentation](docs/testing.md).
-
-5. Lint your code to ensure it meets the project's coding standards:
-
-   ```sh
-   npm run lint         # Check for linting issues
-   npm run lint:fix     # Automatically fix linting issues when possible
-   ```
-
-   For more details about the ESLint setup, refer to the [ESLint Documentation](docs/eslint.md).
 
 6. Build and package the extension by running:
 
