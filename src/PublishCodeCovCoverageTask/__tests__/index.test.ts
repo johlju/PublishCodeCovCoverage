@@ -782,11 +782,9 @@ describe('PublishCodeCovCoverage', () => {
     );
     expect(call).toBeTruthy();
     const loggerFn = call?.[2];
-    // Spy on logger.info
-    const infoSpy = jest.spyOn(logger, 'info');
     // Call the logger function with a test message
     const testMsg = 'test-message';
     loggerFn(testMsg);
-    expect(infoSpy).toHaveBeenCalledWith(testMsg);
+    expect(logger.info).toHaveBeenCalledWith(testMsg);
   });
 });
