@@ -40,30 +40,30 @@ Before using this extension, ensure you have the following:
 
 4. Lint your code to ensure it meets the project's coding standards:
 
-   ```sh
-   npm run lint         # Check for linting issues
-   npm run lint:fix     # Automatically fix linting issues when possible
-   ```
+    ```sh
+    npm run lint         # Check for linting issues
+    npm run lint:fix     # Automatically fix linting issues when possible
+    ```
 
-   For more details about the ESLint setup, refer to the [ESLint Documentation](docs/eslint.md).
+    For more details about the ESLint setup, refer to the [ESLint Documentation](docs/eslint.md).
 
 5. Run the tests to ensure everything is working:
 
-   ```sh
-   npm run test         # Run unit tests only
-   npm run test:integration # Run integration tests only
-   npm run test:all     # Run both unit and integration tests
-   ```
+    ```sh
+    npm run test         # Run unit tests only
+    npm run test:integration # Run integration tests only
+    npm run test:all     # Run both unit and integration tests
+    ```
 
-   For more details about testing, refer to the [Testing Documentation](docs/testing.md).
+    For more details about testing, refer to the [Testing Documentation](docs/testing.md).
 
 6. Build and package the extension by running:
 
-   ```sh
-   npm run package
-   ```
+    ```sh
+    npm run package
+    ```
 
-   Note: This will automatically run the tests before packaging.
+    Note: This will automatically run the tests before packaging.
 
 7. The packaged extension (.vsix) will be available in the `dist` directory.
 8. Upload this extension to your Azure DevOps organization or publish it to the marketplace.
@@ -142,7 +142,7 @@ The following inputs are supported by the task. All are optional unless otherwis
 | branch                             | string   | Branch to which this commit belongs to. Passed as --branch. |
 | pullRequestNumber                  | string   | Specify the pull request number manually. Passed as --pull-request-number. |
 
-> **Note:** You must provide either `testResultFolderName` **or** `coverageFileName`. If both are provided, `coverageFileName` takes precedence and only the specified file will be uploaded. If neither is provided, the task will fail with an error. This allows for two mutually-exclusive modes of operation:
+> **Note:** You must provide either `testResultFolderName` **or** `coverageFileName`. If both are provided, `coverageFileName` takes precedence and only the specified file will be uploaded. If neither is provided, the task will fail with an error. This allows for two mutually exclusive modes of operation:
 >
 > - **Directory mode:** Specify `testResultFolderName` to upload all coverage files found in the directory (default behavior).
 > - **Single file mode:** Specify `coverageFileName` to upload only the given file and disable directory search.
