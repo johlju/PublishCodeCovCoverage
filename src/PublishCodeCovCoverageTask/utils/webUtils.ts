@@ -203,11 +203,11 @@ export function downloadFile(
               // Calculate percentage, capping at 100% to handle compressed data scenarios
               // where decompressed size might exceed the Content-Length header value
               let percent = null;
-              if (!isNaN(totalBytes as number) && (totalBytes as number) > 0) {
-                if (bytesReceived >= (totalBytes as number)) {
+              if (totalBytes !== null && totalBytes > 0) {
+                if (bytesReceived >= totalBytes) {
                   percent = 100; // Cap at 100% if received bytes exceed total bytes
                 } else {
-                  percent = Math.round((bytesReceived / (totalBytes as number)) * 100);
+                  percent = Math.round((bytesReceived / totalBytes) * 100);
                 }
               }
 
@@ -289,7 +289,7 @@ function getNumericHeader(headers: Record<string, unknown>, headerName: string):
   const value = headers[headerName];
   if (typeof value === 'string') {
     const parsed = Number.parseInt(value, 10);
-    return !isNaN(parsed) ? parsed : null;
+    return !Number.isNaN(parsed) ? parsed : null;
   }
   return null;
 }
