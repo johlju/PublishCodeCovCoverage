@@ -40,7 +40,7 @@
     "prettier": "^3.5.3",
     "rimraf": "^6.0.1",
     "tfx-cli": "^0.21.1",
-    "ts-jest": "^29.1.1",
+    "ts-jest": "^29.3.4",
     "typescript": "^5.2.2",
     "globals": "^16.1.0"
   },
