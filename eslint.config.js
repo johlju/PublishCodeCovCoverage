@@ -6,8 +6,6 @@ import prettier from 'eslint-plugin-prettier';
 import prettierConfig from 'eslint-config-prettier';
 
 export default [
-  // Prettier config (extends from prettier)
-  prettierConfig,
   {
     // Apply to all files by default
     ignores: ['dist/**', 'coverage/**', 'node_modules/**', '*.config.js'],
@@ -35,7 +33,7 @@ export default [
     rules: {
       // Best practices
       'no-console': 'warn', // Only warning for now as the codebase uses console extensively
-      'no-debugger': 'warn',
+      'no-debugger': 'error',
       'no-duplicate-imports': 'error',
       'no-else-return': 'error',
       'no-empty-function': ['error', { allow: ['constructors', 'arrowFunctions'] }],
@@ -157,4 +155,6 @@ export default [
       'jest/no-jasmine-globals': 'warn',
     },
   },
+  // Prettier config (extends from prettier)
+  prettierConfig,
 ];
