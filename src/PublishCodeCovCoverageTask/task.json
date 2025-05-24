@@ -18,7 +18,7 @@
       "type": "string",
       "label": "Test Result Folder Name",
       "defaultValue": "",
-      "required": true,
+      "required": false,
       "helpMarkDown": "The name of the test result folder containing the code coverage report"
     },
     {
