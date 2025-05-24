@@ -24,7 +24,10 @@ export async function run(): Promise<void> {
     const verbose = tl.getBoolInput('verbose', false) ?? false;
     // Get token from task input or pipeline variable, remove any whitespace
     const codecovTokenInput = (tl.getInput('codecovToken', false) ?? '').trim();
-    const codecovTokenFromVariable = tl.getVariable('CODECOV_TOKEN');
+    const codecovTokenFromVariableRaw = tl.getVariable('CODECOV_TOKEN');
+    const codecovTokenFromVariable = codecovTokenFromVariableRaw
+      ? codecovTokenFromVariableRaw.trim()
+      : '';
     // If input token is empty, fallback to pipeline variable
     const codecovToken = codecovTokenInput !== '' ? codecovTokenInput : codecovTokenFromVariable;
 
