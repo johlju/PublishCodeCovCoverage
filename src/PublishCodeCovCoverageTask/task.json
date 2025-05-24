@@ -1,7 +1,7 @@
 {
   "id": "44b5baf0-7d04-11ee-b962-0242ac120002",
   "name": "PublishCodeCovCoverage",
-  "friendlyName": "PublishCodeCovCoverage",
+  "friendlyName": "Publish CodeCov Coverage",
   "description": "Uploads code coverage reports to Codecov.io",
   "helpMarkDown": "",
   "category": "Utility",
