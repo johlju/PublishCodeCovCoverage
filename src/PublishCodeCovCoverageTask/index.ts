@@ -207,7 +207,7 @@ export async function run(): Promise<void> {
     if (jobCode) {
       args.push('--job-code', jobCode);
     }
-    if (name) {
+    if (uploadName) {
       args.push('--name', uploadName);
     }
     if (plugin) {
