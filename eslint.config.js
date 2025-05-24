@@ -4,6 +4,7 @@ import typescriptParser from '@typescript-eslint/parser';
 import jest from 'eslint-plugin-jest';
 import prettier from 'eslint-plugin-prettier';
 import prettierConfig from 'eslint-config-prettier';
+import globals from 'globals';
 
 export default [
   {
@@ -21,8 +22,8 @@ export default [
         project: ['./tsconfig.json', './tsconfig.test.json'],
       },
       globals: {
-        node: true,
-        es2022: true,
+        ...globals.node,
+        ...globals.es2022,
       },
     },
     plugins: {
