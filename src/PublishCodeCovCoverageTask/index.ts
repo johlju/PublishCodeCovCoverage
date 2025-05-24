@@ -176,8 +176,63 @@ export async function run(): Promise<void> {
       const resolvedNetworkRootFolder = path.isAbsolute(networkRootFolder)
         ? networkRootFolder
         : path.resolve(originalWorkingDir, networkRootFolder);
-      logger.info(`Adding network root folder: ${resolvedNetworkRootFolder}`);
+      logger.info(`Adding resolved network root folder: ${resolvedNetworkRootFolder}`);
       args.push('--network-root-folder', resolvedNetworkRootFolder);
+    }
+
+    // Add new Codecov CLI arguments if provided
+    const coverageFilesSearchExcludeFolder = tl.getInput('coverageFilesSearchExcludeFolder', false);
+    const recurseSubmodules = tl.getBoolInput('recurseSubmodules', false);
+    const buildUrl = tl.getInput('buildUrl', false);
+    const jobCode = tl.getInput('jobCode', false);
+    const name = tl.getInput('name', false);
+    const plugin = tl.getInput('plugin', false);
+    const failOnError = tl.getBoolInput('failOnError', false);
+    const dryRun = tl.getBoolInput('dryRun', false);
+    const useLegacyUploader = tl.getBoolInput('useLegacyUploader', false);
+    const envVar = tl.getInput('envVar', false);
+    const flag = tl.getInput('flag', false);
+    const branch = tl.getInput('branch', false);
+    const pullRequestNumber = tl.getInput('pullRequestNumber', false);
+
+    if (coverageFilesSearchExcludeFolder) {
+      args.push('--coverage-files-search-exclude-folder', coverageFilesSearchExcludeFolder);
+    }
+    if (recurseSubmodules) {
+      args.push('--recurse-submodules');
+    }
+    if (buildUrl) {
+      args.push('--build-url', buildUrl);
+    }
+    if (jobCode) {
+      args.push('--job-code', jobCode);
+    }
+    if (name) {
+      args.push('--name', name);
+    }
+    if (plugin) {
+      args.push('--plugin', plugin);
+    }
+    if (failOnError) {
+      args.push('--fail-on-error');
+    }
+    if (dryRun) {
+      args.push('--dry-run');
+    }
+    if (useLegacyUploader) {
+      args.push('--use-legacy-uploader');
+    }
+    if (envVar) {
+      args.push('--env-var', envVar);
+    }
+    if (flag) {
+      args.push('--flag', flag);
+    }
+    if (branch) {
+      args.push('--branch', branch);
+    }
+    if (pullRequestNumber) {
+      args.push('--pull-request-number', pullRequestNumber);
     }
     logger.debug(
       `Executing command: ./codecov ${args.map((arg) => quoteCommandArgument(arg)).join(' ')}`

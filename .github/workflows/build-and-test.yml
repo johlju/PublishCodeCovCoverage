@@ -3,9 +3,9 @@ permissions:
   contents: read
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build-and-test:
@@ -48,3 +48,4 @@ jobs:
           INPUT_NETWORKROOTFOLDER: '${{ github.workspace }}'
           INPUT_VERBOSE: 'true'
           INPUT_CODECOVTOKEN: '${{ secrets.CODECOV_TOKEN }}'
+          INPUT_FLAG: 'unit'
