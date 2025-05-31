@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      # Mount the root folder that contains .git
+      - ..:/workspace:cached
+    # Override the workspace ownership in the container
+    command: bash -c "sudo chown -R vscode:vscode /workspace 2>/dev/null || true && sleep infinity"
+    # Set environment variables
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+    # Expose ports
+    # ports:
+    #   - '3000:3000'
+    #   - '3001:3001'
+    # Use the default shell
+    user: vscode
