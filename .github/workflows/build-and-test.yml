@@ -64,4 +64,4 @@ jobs:
           INPUT_VERBOSE: 'true'
           INPUT_CODECOVTOKEN: '${{ vars.CODECOV_TOKEN }}'
           INPUT_FLAG: 'unit'
-          INPUT_DRYRUN: 'true'
+          #INPUT_DRYRUN: 'true'
