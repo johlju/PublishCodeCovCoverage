@@ -1,22 +1,31 @@
 version: 2
 updates:
-  # Enable version updates for npm
-  - package-ecosystem: "npm"
-    # Look for `package.json` and `lock` files in the `root` directory
-    directory: "/"
-    # Check the npm registry for updates every day (weekdays)
+  # Enable version updates for npm dependencies
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "daily"
+      interval: 'weekly'
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
 
-  # Enable version updates for Docker
-  - package-ecosystem: "docker"
-    # Look for a `Dockerfile` in the `.devcontainer` directory
-    directory: "/.devcontainer"
-    # Check for updates once a week
+  # Enable version updates for Docker images
+  - package-ecosystem: 'docker'
+    directory: '/.devcontainer'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
+
+  # Enable version updates for Docker Compose
+  - package-ecosystem: 'docker-compose'
+    directory: '/.devcontainer'
+    schedule:
+      interval: 'weekly'
+
+  # Enable version updates for Dev containers Features
+  - package-ecosystem: 'devcontainers'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
