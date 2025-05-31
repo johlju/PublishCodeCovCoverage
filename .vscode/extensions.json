@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "ms-vscode-remote.remote-containers",
+    "ms-azuretools.vscode-docker",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "streetsidesoftware.code-spell-checker",
+    "christian-kohler.path-intellisense",
+    "christian-kohler.npm-intellisense",
+    "gruntfuggly.todo-tree",
+    "usernamehw.errorlens",
+    "orta.vscode-jest",
+    "firsttris.vscode-jest-runner"
+  ]
+}
