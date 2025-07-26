@@ -21,7 +21,7 @@
   "author": "Viscalyx",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.9.0",
+    "axios": "^1.10.0",
     "azure-pipelines-task-lib": "^5.2.0",
     "winston": "^3.17.0",
     "winston-transport": "^4.9.0"
