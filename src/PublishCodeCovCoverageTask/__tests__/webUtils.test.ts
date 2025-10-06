@@ -12,6 +12,8 @@ jest.mock('node:fs', () => {
     unlink: jest.fn(),
     mkdirSync: jest.fn(),
     existsSync: jest.fn(),
+    writeFileSync: jest.fn(),
+    readFileSync: jest.fn(),
     constants: { F_OK: 1 },
     promises: {
       mkdir: jest.fn().mockResolvedValue(undefined),
