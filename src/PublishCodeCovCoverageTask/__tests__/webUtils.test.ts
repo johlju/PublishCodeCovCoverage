@@ -1,7 +1,7 @@
 // filepath: /Users/johlju/source/PublishCodeCovCoverage/src/PublishCodeCovCoverageTask/__tests__/webUtils.test.ts
-import * as fs from 'node:fs';
-import { EventEmitter } from 'node:events';
 import axios from 'axios';
+import { EventEmitter } from 'node:events';
+import * as fs from 'node:fs';
 import { downloadFile } from '../utils/webUtils';
 
 // Create fully typed mock implementations
@@ -12,6 +12,8 @@ jest.mock('node:fs', () => {
     unlink: jest.fn(),
     mkdirSync: jest.fn(),
     existsSync: jest.fn(),
+    writeFileSync: jest.fn(),
+    readFileSync: jest.fn(),
     constants: { F_OK: 1 },
     promises: {
       mkdir: jest.fn().mockResolvedValue(undefined),
