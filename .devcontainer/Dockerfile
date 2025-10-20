@@ -1,5 +1,5 @@
 # Use the official Node.js 24 LTS image as base
-FROM node:24-bullseye
+FROM node:25-bullseye
 
 # Install system dependencies and tools in a single layer
 RUN apt-get update && \
